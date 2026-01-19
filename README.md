@@ -6,12 +6,12 @@
 
 **Tier0** is an open-source industrial data integration platform built on the **Unified Namespace (UNS)** methodology and powered by production-grade open-source technologies.
 
-<img width="750" src="./deploy/assert/image/Update_open source program.jpg" />
+<img width="750" src="/deploy/assert/image/open source.png" />
 
 ---
 
 ## Architecture Overview
-<img width="750" src="./deploy/assert/image/open source.png" />
+<img width="750" src="deploy/assert/image/function_update.png" />
 
 - **Source Flow**  
   Serves as the connection pipeline to devices and systems. It handles real-time protocol translation into JSON payloads. Built entirely on Node-RED.
