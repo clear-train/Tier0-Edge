@@ -555,8 +555,6 @@ type UnsNamespaceRepo interface {
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](../CONTRIBUTING.md) for details.
-
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
