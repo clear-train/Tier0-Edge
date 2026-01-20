@@ -32,7 +32,7 @@ services:
       - edge_network
     restart: always
   uns:
-    image: tier0/tier0-frontend:1.0.0-R12
+    image: tier0/tier0-backend:1.0.0-R12
     container_name: uns
     environment:
       - LLM_MODEL=${LLM_MODEL}
@@ -282,7 +282,7 @@ services:
       KC_HOSTNAME: "${ENTRANCE_DOMAIN}"              # 指定主机名
       KC_FRONTEND_URL: "${BASE_URL}"  # 设置前端 URL
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: supos
+      KC_BOOTSTRAP_ADMIN_PASSWORD: tier0
       KC_COOKIE_SECURE: false                          # 禁用安全 cookie
       KC_DB: postgres
       KC_DB_URL: "jdbc:postgresql://postgresql:5432/keycloak"
