@@ -1965,7 +1965,7 @@ plugins:
   - http
   - https
   instance_name: ~
-  enabled: true
+  enabled: ${KONG_AUTH_ENABLED}
   consumer: ~
   id: 1845ee75-d704-40e1-a8b0-aa2baaf9d71b
   route: ~
