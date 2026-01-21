@@ -317,7 +317,7 @@ services:
   ca_certificates: ~
   retries: 5
   created_at: 1755572726
-  port: 1888
+  port: 1889
   updated_at: 1764811192
   enabled: true
   host: eventflow
