@@ -697,7 +697,7 @@ routes:
   service: 94797f49-35e2-428f-b46a-84788fa06fa8
   strip_path: true
   paths:
-  - '/eventflow-api/ '
+  - '/eventflow-api/'
   created_at: 1755572773
   updated_at: 1764811192
   response_buffering: true
