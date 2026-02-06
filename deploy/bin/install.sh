@@ -54,6 +54,8 @@ elif [ -d "$VOLUMES_PATH" ] && [ "$(ls -A "$VOLUMES_PATH" 2>/dev/null)" ]; then
     r|R)
       info "Cleaning partial installation..."
       bash "$SCRIPT_DIR/clean-all.sh" -f
+      # Regenerate .env.tmp since uninstall.sh deleted it
+      source "$SCRIPT_DIR/util/set-temp-env.sh" "$SCRIPT_DIR/../" "${COMPOSE_PROFILE_ARGS[@]}"
       source "$SCRIPT_DIR/init/init-volumes.sh"
       ;;
     *)
