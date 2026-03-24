@@ -10,8 +10,7 @@ if [ -f "$SCRIPT_DIR/../.env" ]; then
   ENV_FILE="$SCRIPT_DIR/../.env"
 fi
 
-
-sed -i 's/\r$//' "$ENV_FILE" # Clean .env file
+tr -d '\r' < "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
 source "$ENV_FILE"          # Load initial environment variables
 source "$SCRIPT_DIR/global/log.sh"
 source "$SCRIPT_DIR/global/choose-profile-command.sh"
