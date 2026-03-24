@@ -1,5 +1,6 @@
 // 重导
 export * from './alarm';
+export * from './app-marketplace';
 export * from './apps';
 export * from './attachments';
 export * from './auth';

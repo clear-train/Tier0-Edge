@@ -220,22 +220,26 @@ const UserPopover: FC<PopoverProps> = ({ children, ...restProps }) => {
             children: (
               <ComSelect
                 disabled={!currentUserInfo?.sub}
-                onChange={(v) => {
-                  if (currentUserInfo?.sub) {
-                    // 重新过滤插件国际化文件;
-                    updatePersonConfigApi({ userId: currentUserInfo.sub!, mainLanguage: v }).then(async () => {
-                      const pluginLang = await preloadPluginLang(
-                        pluginList
-                          ?.filter((f: any) => f.installStatus === 'installed')
-                          ?.filter((f: any) => f?.plugInfoYml?.route?.name)
-                          ?.map((m: any) => ({ name: `/${m?.plugInfoYml?.route?.name}`, backendName: m?.name })) || [],
-                        v
-                      );
-                      // 更新路由，名称和描述是后端国际化
+                onChange={async (v) => {
+                  if (!currentUserInfo?.sub) return;
+                  const pluginLang = await preloadPluginLang(
+                    pluginList
+                      ?.filter((f: any) => f.installStatus === 'installed')
+                      ?.filter((f: any) => f?.plugInfoYml?.route?.name)
+                      ?.map((m: any) => ({ name: `/${m?.plugInfoYml?.route?.name}`, backendName: m?.name })) || [],
+                    v
+                  );
+
+                  try {
+                    if (systemInfo?.authEnable !== false && currentUserInfo.sub !== 'local-dev') {
+                      await updatePersonConfigApi({ userId: currentUserInfo.sub!, mainLanguage: v });
                       fetchSystemInfo(true);
-                      return initI18n(v, pluginLang);
-                    });
+                    }
+                  } catch (error) {
+                    console.log(error);
                   }
+
+                  return initI18n(v, pluginLang);
                 }}
                 value={lang}
                 style={{ height: 28, width: 94, backgroundColor: 'var(--supos-bg-color) !important' }}

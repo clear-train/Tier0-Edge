@@ -25,6 +25,76 @@ import {
 } from '../utils.ts';
 import { getLangListApi } from '@/apis/inter-api/i18n.ts';
 
+const APP_MARKETPLACE_MENU: ResourceProps = {
+  id: 'frontend-app-marketplace',
+  type: 2,
+  icon: 'menu.tag.apps',
+  code: 'app-marketplace',
+  showName: '应用市场',
+  showDescription: '部署和管理 OpenEMS 等边缘应用',
+  sort: 999,
+  url: '/app-marketplace',
+  urlType: 1,
+  openType: 0,
+  enable: true,
+  homeEnable: true,
+};
+
+const DEV_LOCAL_SYSTEM_INFO = {
+  appTitle: APP_TITLE,
+  authEnable: false,
+  lang: 'zh-CN',
+};
+
+const DEV_LOCAL_USER_INFO = {
+  preferredUsername: 'local-dev',
+  sub: 'local-dev',
+  homePage: '/app-marketplace',
+  superAdmin: true,
+  roleList: [],
+  roleString: '',
+  buttonList: [],
+  pageList: [{ policyId: 'local', resourceId: 'frontend-app-marketplace', url: '/app-marketplace' }],
+};
+
+const mergeBuiltinMenus = (
+  menuTree: ResourceProps[] = [],
+  menuGroup: ResourceProps[] = [],
+  homeTree: ResourceProps[] = [],
+  homeGroup: ResourceProps[] = []
+) => {
+  const exists = menuGroup.some(
+    (item) => item.code?.toLowerCase?.() === APP_MARKETPLACE_MENU.code || item.url === APP_MARKETPLACE_MENU.url
+  );
+  if (exists) {
+    return { menuTree, menuGroup, homeTree, homeGroup };
+  }
+  const mergedMenuGroup = [...menuGroup, APP_MARKETPLACE_MENU];
+  const mergedMenuTree = [...menuTree, APP_MARKETPLACE_MENU].sort((a, b) => a.sort - b.sort);
+  const mergedHomeGroup = [...homeGroup, APP_MARKETPLACE_MENU];
+  const mergedHomeTree = [...homeTree, APP_MARKETPLACE_MENU].sort((a, b) => a.sort - b.sort);
+  return {
+    menuTree: mergedMenuTree,
+    menuGroup: mergedMenuGroup,
+    homeTree: mergedHomeTree,
+    homeGroup: mergedHomeGroup,
+  };
+};
+
+const applyDevLocalFallback = async () => {
+  const mergedMenus = mergeBuiltinMenus([], [], [], []);
+  useBaseStore.setState({
+    ...initBaseContent,
+    homeGroup: mergedMenus.homeGroup,
+    homeTree: mergedMenus.homeTree,
+    menuGroup: mergedMenus.menuGroup,
+    menuTree: mergedMenus.menuTree,
+    currentUserInfo: DEV_LOCAL_USER_INFO as UserInfoProps,
+    systemInfo: DEV_LOCAL_SYSTEM_INFO,
+  });
+  return initI18n(storageOpt.getOrigin(SUPOS_LANG) || defaultLanguage);
+};
+
 /**
  * 获取语言包
  */
@@ -142,6 +212,7 @@ const updateBaseStore = async (isFirst: boolean = false) => {
       const enableRoutes = allRoutes?.filter((f) => f.enable);
       // 获取终极菜单
       const { homeTree, homeTabGroup, homeGroup, menuGroup, menuTree } = buildResourceTrees(enableRoutes);
+      const mergedMenus = mergeBuiltinMenus(menuTree, menuGroup, homeTree, homeGroup);
       const allButtonGroup = resource?.filter((r: ResourceProps) => r.type === 3);
       const _buttonList =
         systemInfo?.authEnable === false || info?.superAdmin === true
@@ -168,11 +239,11 @@ const updateBaseStore = async (isFirst: boolean = false) => {
       };
       useBaseStore.setState({
         ...initBaseContent,
-        homeTree,
+        homeTree: mergedMenus.homeTree,
         homeTabGroup,
-        homeGroup,
-        menuGroup,
-        menuTree,
+        homeGroup: mergedMenus.homeGroup,
+        menuGroup: mergedMenus.menuGroup,
+        menuTree: mergedMenus.menuTree,
         originMenu: resource,
         allButtonGroup,
         // pluginList,
@@ -192,7 +263,7 @@ const updateBaseStore = async (isFirst: boolean = false) => {
             ?.map((m) => m.name) ?? [],
       });
       // 设置新手引导
-      guideConfig({ systemInfo, menuGroup, info });
+      guideConfig({ systemInfo, menuGroup: mergedMenus.menuGroup, info });
 
       // 设置unsTree信息
       const unsTreeInfo = storageOpt.get(SUPOS_UNS_TREE);
@@ -210,46 +281,58 @@ const updateBaseStore = async (isFirst: boolean = false) => {
       return await initI18n(_lang);
     } catch (_) {
       console.log(_);
+      if (import.meta.env.DEV) {
+        return applyDevLocalFallback();
+      }
       // 首次需要初始化语言包
       return await initI18n(storageOpt.getOrigin(SUPOS_LANG) || defaultLanguage);
     }
   } else {
     const baseState = useBaseStore.getState();
     // 重新获取菜单
-    return getRoutesResourceApi().then((resource: ResourceProps[]) => {
-      const allRoutes = filterRouteByUserResource(
-        mapResource(resource.filter((r: ResourceProps) => r.type !== 3)),
-        baseState?.currentUserInfo?.pageList,
-        baseState.systemInfo?.authEnable && !baseState.currentUserInfo?.superAdmin
-      );
-      const enableRoutes = allRoutes?.filter((f) => f.enable);
-      const { homeTree, homeTabGroup, homeGroup, menuGroup, menuTree } = buildResourceTrees(enableRoutes);
-      const allButtonGroup = resource?.filter((r: ResourceProps) => r.type === 3);
-      const _buttonList =
-        baseState?.systemInfo?.authEnable === false || baseState?.currentUserInfo?.superAdmin === true
-          ? handleButtonPermissions(['button:*'], allButtonGroup) || []
-          : filterArrays(
-              handleButtonPermissions(
-                baseState?.currentUserInfo?.denyButtonGroup?.map((i: any) => i.uri) || [],
-                allButtonGroup
-              ) || [],
-              handleButtonPermissions(
-                baseState?.currentUserInfo?.buttonGroup?.map((i: any) => i.uri) || [],
-                allButtonGroup
-              ) || []
-            ) || [];
-      useBaseStore.setState({
-        homeTree,
-        homeTabGroup,
-        homeGroup,
-        menuGroup,
-        menuTree,
-        originMenu: resource,
-        allButtonGroup,
-        buttonList: _buttonList,
+    return getRoutesResourceApi()
+      .then((resource: ResourceProps[]) => {
+        const allRoutes = filterRouteByUserResource(
+          mapResource(resource.filter((r: ResourceProps) => r.type !== 3)),
+          baseState?.currentUserInfo?.pageList,
+          baseState.systemInfo?.authEnable && !baseState.currentUserInfo?.superAdmin
+        );
+        const enableRoutes = allRoutes?.filter((f) => f.enable);
+        const { homeTree, homeTabGroup, homeGroup, menuGroup, menuTree } = buildResourceTrees(enableRoutes);
+        const mergedMenus = mergeBuiltinMenus(menuTree, menuGroup, homeTree, homeGroup);
+        const allButtonGroup = resource?.filter((r: ResourceProps) => r.type === 3);
+        const _buttonList =
+          baseState?.systemInfo?.authEnable === false || baseState?.currentUserInfo?.superAdmin === true
+            ? handleButtonPermissions(['button:*'], allButtonGroup) || []
+            : filterArrays(
+                handleButtonPermissions(
+                  baseState?.currentUserInfo?.denyButtonGroup?.map((i: any) => i.uri) || [],
+                  allButtonGroup
+                ) || [],
+                handleButtonPermissions(
+                  baseState?.currentUserInfo?.buttonGroup?.map((i: any) => i.uri) || [],
+                  allButtonGroup
+                ) || []
+              ) || [];
+        useBaseStore.setState({
+          homeTree: mergedMenus.homeTree,
+          homeTabGroup,
+          homeGroup: mergedMenus.homeGroup,
+          menuGroup: mergedMenus.menuGroup,
+          menuTree: mergedMenus.menuTree,
+          originMenu: resource,
+          allButtonGroup,
+          buttonList: _buttonList,
+        });
+        return allRoutes;
+      })
+      .catch((error) => {
+        if (import.meta.env.DEV) {
+          console.log(error);
+          return applyDevLocalFallback();
+        }
+        return Promise.reject(error);
       });
-      return allRoutes;
-    });
   }
 };
 

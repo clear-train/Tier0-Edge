@@ -23,3 +23,8 @@ backend/.env
 **/.env.production
 .trae
 deploy/localtest/
+
+# generated runtime / downloaded plugin data
+frontend/apps/services-express/.runtime/
+deploy/mount/**/.npm/
+deploy/mount/grafana/data/

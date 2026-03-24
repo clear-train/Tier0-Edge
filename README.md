@@ -40,6 +40,28 @@
 
 ## Deployment
 > For detailed guides and advanced examples, see the <a href="https://suposcommunity.vercel.app/">Tier0 Community Docs</a>.
+
+## App Marketplace and OpenEMS
+
+This repository now includes an initial **App Marketplace** entry in the web UI. The first integrated app is **OpenEMS**.
+
+- A new `App Marketplace` page is available in the frontend navigation and can also be reached from the UNS toolbar.
+- The OpenEMS card is no longer a static demo. It maps deployment fields to an OpenEMS Docker topology (`Edge Only` or `Edge + UI`) and generates a Docker Compose preview in the UI.
+- A local deployment API was added to `frontend/apps/services-express` under `/open-api/app-marketplace`. It stores generated compose files under a runtime directory and executes `docker compose up -d` / `docker compose down` for install and uninstall.
+- Development-mode fallback and mock data were added so the marketplace page can still be opened when the original backend proxy is unavailable.
+
+Relevant implementation areas:
+
+- `frontend/apps/web/src/pages/app-marketplace`
+- `frontend/apps/web/src/stores/base/index.ts`
+- `frontend/apps/web/src/pages/uns/TopDom.tsx`
+- `frontend/apps/services-express/src/routes/open-api/app-marketplace.ts`
+
+Local development notes:
+
+- Start the UI and local service together with `npx pnpm@10.13.1 dev:marketplace` from the `frontend` directory.
+- Docker must be available on the host if you want OpenEMS install/uninstall to actually run.
+
 ### 1.Linux
 #### 1.1 Operating Environment
 - **Operating System**: Currently tested on Ubuntu Server 24.04 with Docker. We welcome feedback on other OS distributions.

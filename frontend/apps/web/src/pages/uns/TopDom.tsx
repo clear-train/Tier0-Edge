@@ -1,5 +1,5 @@
 import { Button, Flex } from 'antd';
-import { Copy, Rss, Workspace } from '@carbon/icons-react';
+import { Apps, Copy, Rss, Workspace } from '@carbon/icons-react';
 import { ButtonPermission } from '@/common-types/button-permission';
 import { getTreeStoreSnapshot, useTreeStore, useTreeStoreRef } from './store/treeStore';
 import { useClipboard, useTranslate } from '@/hooks';
@@ -9,6 +9,7 @@ import { AuthButton, AuthWrapper } from '@/components/auth';
 import ComBreadcrumb from '@/components/com-breadcrumb';
 import ComText from '@/components/com-text';
 import { useBaseStore } from '@/stores/base';
+import { useNavigate } from 'react-router';
 
 interface TopDomProps {
   setCurrentUnusedTopicNode: any;
@@ -23,6 +24,7 @@ const TopDom: FC<TopDomProps> = ({
   changeCurrentPath,
 }) => {
   const systemInfo = useBaseStore((state) => state.systemInfo);
+  const navigate = useNavigate();
   const formatMessage = useTranslate();
   const exportRef = useRef<any>(null);
   const importRef = useRef<any>(null);
@@ -129,6 +131,16 @@ const TopDom: FC<TopDomProps> = ({
         <span />
       )}
       <div className="chartTopR">
+        <Button
+          type="primary"
+          ghost
+          icon={<Apps size={16} />}
+          onClick={() => {
+            navigate('/app-marketplace');
+          }}
+        >
+          {formatMessage('marketplace.title', undefined, 'App Marketplace')}
+        </Button>
         <AuthButton
           auth={ButtonPermission['uns.unsImport']}
           type="primary"

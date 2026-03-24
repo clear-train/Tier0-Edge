@@ -11,6 +11,7 @@
     "properties:convert": "turbo run properties:convert",
     "dev": "turbo run dev",
     "dev:web": "turbo run dev --filter ./apps/web",
+    "dev:marketplace": "turbo run dev --filter ./apps/web --filter ./apps/services-express",
     "dev:servicesExpress": "turbo run dev --filter ./apps/services-express",
     "start:servicesExpress": "turbo run start --filter ./apps/services-express",
     "build": "turbo run build",

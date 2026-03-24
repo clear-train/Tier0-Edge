@@ -1063,5 +1063,16 @@
   "MenuConfiguration.guideCreateMenu": "Create different levels of menus.",
   "MenuConfiguration.guideRefreshMenu": "Refresh the entire menu structure.",
   "MenuConfiguration.guideSortMenu": "Quickly sort menus.",
-  "MenuConfiguration.menu": "Menu"
+  "MenuConfiguration.menu": "Menu",
+  "marketplace.title": "App Marketplace",
+  "marketplace.subtitle": "Deploy and manage edge applications with one click and streamline industrial data integration.",
+  "marketplace.deployConfig": "Deployment Parameters",
+  "marketplace.configHint": "Configure deployment parameters. These fields are reserved for Docker Compose environment mapping.",
+  "marketplace.required": "{name} is required",
+  "marketplace.installSuccess": "{name} installed successfully",
+  "marketplace.apiPending": "Backend deployment API is not connected yet; interface definitions are reserved",
+  "marketplace.openReady": "{name} is opening",
+  "marketplace.viewDocs": "View Docs",
+  "marketplace.composePreview": "Docker Compose Preview",
+  "marketplace.composeSource": "Based on official OpenEMS Docker deployment docs"
 }

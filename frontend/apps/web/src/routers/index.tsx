@@ -27,6 +27,7 @@ import Share from '@/pages/share';
 import EventFlow from '@/pages/event-flow';
 import EventFlowPreview from '@/pages/event-flow/FlowPreview.tsx';
 import PluginManagement from '@/pages/plugin-management';
+import AppMarketplace from '@/pages/app-marketplace';
 import qs from 'qs';
 import { useEffect } from 'react';
 import { useBaseStore } from '@/stores/base';
@@ -45,6 +46,10 @@ const RootRedirect = () => {
   }));
   const params = qs.parse(window.location.search, { ignoreQueryPrefix: true });
   useEffect(() => {
+    if (import.meta.env.DEV) {
+      window.location.href = currentUserInfo?.homePage || '/app-marketplace';
+      return;
+    }
     if (params?.isLogin) {
       window.location.href = currentUserInfo?.homePage || '/uns';
     } else {
@@ -205,6 +210,10 @@ export const childrenRoutes = [
   {
     path: '/plugin-management',
     Component: PluginManagement,
+  },
+  {
+    path: '/app-marketplace',
+    Component: AppMarketplace,
   },
   {
     path: '/403',

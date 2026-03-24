@@ -1063,5 +1063,16 @@
   "MenuConfiguration.guideCreateMenu": "创建不同层级的菜单",
   "MenuConfiguration.guideRefreshMenu": "刷新整个菜单结构",
   "MenuConfiguration.guideSortMenu": "快速进行菜单排序",
-  "MenuConfiguration.menu": "菜单"
+  "MenuConfiguration.menu": "菜单",
+  "marketplace.title": "应用市场",
+  "marketplace.subtitle": "一键部署和管理边缘应用，快速打通工业数据集成链路。",
+  "marketplace.deployConfig": "部署参数",
+  "marketplace.configHint": "配置部署参数。这些字段已预留用于后续 Docker Compose 环境变量映射。",
+  "marketplace.required": "{name} 为必填项",
+  "marketplace.installSuccess": "{name} 安装成功",
+  "marketplace.apiPending": "后端部署接口暂未接入，已保留 API 定义",
+  "marketplace.openReady": "{name} 正在打开",
+  "marketplace.viewDocs": "查看文档",
+  "marketplace.composePreview": "Docker Compose 预览",
+  "marketplace.composeSource": "基于 OpenEMS 官方 Docker 部署文档"
 }
