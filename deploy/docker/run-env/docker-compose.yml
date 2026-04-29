@@ -31,7 +31,7 @@ services:
       - supos_edge
 
   emqx:
-    image: emqx/emqx:latest
+    image: emqx/emqx:5.7
     container_name: emqx
     hostname: emqx
     restart: always

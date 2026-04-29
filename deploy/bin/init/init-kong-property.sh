@@ -9,8 +9,8 @@ fi
 # ---------------------------------------------------------------------------
 # 0. Normalise .env line endings (Windows → Unix)
 # ---------------------------------------------------------------------------
-# Use the new variable name
-sed -i 's/\r$//' "$ENV_FILE"
+# Use a temp file so the script works on both GNU and BSD/macOS toolchains.
+tr -d '\r' < "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
 
 # ---------------------------------------------------------------------------
 # 1. Load variables from .env
@@ -56,6 +56,9 @@ fi
 if [[ -f "$ROOT_DIR/.env.tmp" ]]; then
  export $(grep -v '^#' "$ROOT_DIR/.env.tmp" | xargs)
 fi
+
+export ENABLE_MCP="${ENABLE_MCP:-none}"
+export ENABLE_PORTAINER="${ENABLE_PORTAINER:-menu}"
 
 echo  $ENABLE_ELK_MENU
 # ---------------------------------------------------------------------------

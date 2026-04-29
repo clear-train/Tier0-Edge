@@ -189,6 +189,10 @@ service.interceptors.response.use(
 export class ApiWrapper {
   baseUrl = '';
   constructor(requestBaseUrl = '') {
+    if (/^https?:\/\//.test(requestBaseUrl) || requestBaseUrl.startsWith('//')) {
+      this.baseUrl = requestBaseUrl;
+      return;
+    }
     const hostUrl = `${window.location.host}`;
     this.baseUrl = `//${hostUrl}${requestBaseUrl}`;
   }

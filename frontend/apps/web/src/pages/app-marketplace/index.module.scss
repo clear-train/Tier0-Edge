@@ -42,9 +42,22 @@
 
 .cardHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 12px;
+}
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 1 220px;
+}
+
+.primaryAction {
+  min-width: 88px;
 }
 
 .appMeta {
@@ -78,6 +91,19 @@
   line-height: 22px;
 }
 
+.syncSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--supos-text-color-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.syncSummaryError {
+  color: var(--supos-error-color, #c94545);
+}
+
 .detailMeta {
   display: flex;
   align-items: center;
@@ -91,10 +117,72 @@
   line-height: 22px;
 }
 
+.alert {
+  margin-bottom: 12px;
+}
+
 .formGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 12px;
+}
+
+.syncSectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.syncSectionTitle {
+  h3 {
+    margin: 0;
+    color: var(--supos-text-color);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 6px 0 0;
+    color: var(--supos-text-color-secondary);
+    line-height: 22px;
+  }
+}
+
+.syncSectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.mappingCard {
+  border: 1px solid var(--supos-home-border-color);
+  background: var(--supos-bg-color);
+}
+
+.mappingCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: var(--supos-text-color);
+  font-weight: 600;
+}
+
+.mappingStatus {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  color: var(--supos-text-color-secondary);
+  font-size: 12px;
+}
+
+.mappingStatusError {
+  color: var(--supos-error-color, #c94545);
 }
 
 .composeSection {
@@ -132,12 +220,20 @@
 
   .headerMeta,
   .detailMeta,
-  .composeTitle {
+  .composeTitle,
+  .syncSectionHeader,
+  .mappingCardHeader {
     align-items: flex-start;
     flex-direction: column;
   }
 
   .formGrid {
     grid-template-columns: 1fr;
+  }
+
+  .cardActions {
+    width: 100%;
+    flex: 1 1 auto;
+    justify-content: flex-start;
   }
 }

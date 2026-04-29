@@ -11,6 +11,25 @@ app.use(express.json());
 // 解析 Content-Type: application/x-www-form-urlencoded
 app.use(express.urlencoded({ extended: true }));
 
+// Allow the deployed frontend at :8088 to call the local services-express port directly.
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Vary', 'Origin');
+  } else {
+    res.header('Access-Control-Allow-Origin', '*');
+  }
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, X-Sa-Token, Authorization');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+
 // 注册所有路由
 registerRoutes(app);
 

@@ -20,7 +20,8 @@
     "@langchain/ollama": "catalog:ai",
     "@langchain/openai": "catalog:ai",
     "dotenv": "catalog:dev",
-    "@modelcontextprotocol/sdk": "catalog:ai"
+    "@modelcontextprotocol/sdk": "catalog:ai",
+    "mqtt": "^5.14.1"
   },
   "devDependencies": {
     "@types/express": "catalog:type",

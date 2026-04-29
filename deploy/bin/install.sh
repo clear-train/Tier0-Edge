@@ -20,7 +20,7 @@ echo
 
 # --- 2. Configuration Setup (sourcing from /util) ---
 source "$SCRIPT_DIR/util/handle-volumes-path.sh"
-source "$SCRIPT_DIR/util/select-ip-address.sh"
+#source "$SCRIPT_DIR/util/select-ip-address.sh"
 
 # --- 3. Dependency Installation ---
 source "$SCRIPT_DIR/deb/install-docker.sh"
@@ -35,6 +35,19 @@ source "$SCRIPT_DIR/init/init-keycloak-sql.sh" "$SCRIPT_DIR/.."
 source "$SCRIPT_DIR/init/init-kong-property.sh" "$SCRIPT_DIR/.."
 
 DOCKER_COMPOSE_FILE="$SCRIPT_DIR/../docker-compose.yml"
+DOCKER_COMPOSE_OVERRIDE_FILE="$SCRIPT_DIR/../docker-compose.local-frontend.yml"
+BUILD_LOCAL_FRONTEND_SCRIPT="$SCRIPT_DIR/build-local-frontend-assets.sh"
+COMPOSE_FILES=(-f "$DOCKER_COMPOSE_FILE")
+
+if [[ "${LOCAL_FRONTEND:-false}" == "true" || "${LOCAL_FRONTEND:-false}" == "1" ]]; then
+  if [ -f "$DOCKER_COMPOSE_OVERRIDE_FILE" ]; then
+    info "LOCAL_FRONTEND enabled. Building local frontend artifacts..."
+    bash "$BUILD_LOCAL_FRONTEND_SCRIPT"
+    COMPOSE_FILES+=(-f "$DOCKER_COMPOSE_OVERRIDE_FILE")
+  else
+    warn "LOCAL_FRONTEND enabled but $DOCKER_COMPOSE_OVERRIDE_FILE was not found. Continuing with default frontend image."
+  fi
+fi
 
 # --- 6. Volume and Image Management ---
 echo "Start creating volumes"
@@ -81,8 +94,13 @@ if [ -d "$SCRIPT_DIR/../images/" ] && [ "$(ls -A "$SCRIPT_DIR/../images/")" ]; t
 fi
 
 # --- 7. Main Execution: Start services and run post-init scripts ---
+if [ ! -f "$SCRIPT_DIR/../.env.tmp" ]; then
+  warn ".env.tmp was missing before Docker startup; regenerating it."
+  source "$SCRIPT_DIR/util/set-temp-env.sh" "$SCRIPT_DIR/../" "${COMPOSE_PROFILE_ARGS[@]}"
+fi
+
 info "Starting Docker containers in detached mode..."
-if ! docker compose --env-file "$ENV_FILE" --env-file "$SCRIPT_DIR/../.env.tmp" --project-name tier0 "${COMPOSE_PROFILE_ARGS[@]}" -f "$DOCKER_COMPOSE_FILE" up -d; then
+if ! docker compose --env-file "$ENV_FILE" --env-file "$SCRIPT_DIR/../.env.tmp" --project-name tier0 "${COMPOSE_PROFILE_ARGS[@]}" "${COMPOSE_FILES[@]}" up -d; then
     error "Failed to start Docker containers. Please check the logs above."
     exit 1
 fi

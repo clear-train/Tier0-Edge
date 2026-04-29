@@ -25,10 +25,15 @@ mkdir -p $VOLUMES_PATH/eventflow/ && cp -r $SCRIPT_DIR/../mount/eventflow/* $VOL
 cp -r $SCRIPT_DIR/../mount/postgresql/* $VOLUMES_PATH/postgresql/
 
 
-chown 999:0 -R $VOLUMES_PATH/postgresql
-chown 1000:1000 -R $VOLUMES_PATH/emqx
-chown 1000:0 -R $VOLUMES_PATH/keycloak
-chown 755:0 -R $VOLUMES_PATH/grafana
+if sudo -n true 2>/dev/null; then
+  sudo chown -R $(whoami) $VOLUMES_PATH/postgresql
+  sudo chmod 644 $VOLUMES_PATH/postgresql/conf/*.conf
+  sudo chown -R $(whoami) $VOLUMES_PATH/emqx
+  sudo chown -R $(whoami) $VOLUMES_PATH/keycloak
+  sudo chown -R $(whoami) $VOLUMES_PATH/grafana
+else
+  warn "Skipping ownership updates because sudo requires a password in this shell."
+fi
 
 cp $SCRIPT_DIR/../docker-compose.yml $VOLUMES_PATH/edge/system/
 if [ -f $SCRIPT_DIR/global/active-services.txt ]; then
