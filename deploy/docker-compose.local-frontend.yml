@@ -1,0 +1,17 @@
+services:
+  frontend:
+    image: tier0/tier0-frontend:local-marketplace
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile-runtime-local
+    environment:
+      - ENTRANCE_PROTOCOL=${ENTRANCE_PROTOCOL}
+      - ENTRANCE_DOMAIN=${ENTRANCE_DOMAIN}
+      - ENTRANCE_PORT=${ENTRANCE_PORT}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../frontend/apps/services-express/.runtime:/app/.runtime
+    command: >
+      sh -c "
+        concurrently \"serve -s /app/web-dist -l 3000\" \"node /app/services-express-dist/index.js\"
+      "

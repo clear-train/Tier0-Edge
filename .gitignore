@@ -28,3 +28,5 @@ deploy/localtest/
 frontend/apps/services-express/.runtime/
 deploy/mount/**/.npm/
 deploy/mount/grafana/data/
+deploy/mount/kong/kong_config.yml
+deploy/mount/postgresql/init-scripts/create_keycloak_database.sql

@@ -9,7 +9,7 @@ import { getSystemConfig } from '@/apis/inter-api/system-config.ts';
 import { getUserInfo } from '@/apis/inter-api/auth';
 
 import type { TBaseStore } from '@/stores/base/type.ts';
-import { initI18n, defaultLanguage, useI18nStore } from '../i18n-store.ts';
+import { initI18n, defaultLanguage, I18nEnum, useI18nStore } from '../i18n-store.ts';
 import { getRoutesResourceApi } from '@/apis/inter-api/resource.ts';
 import {
   type Criteria,
@@ -25,25 +25,33 @@ import {
 } from '../utils.ts';
 import { getLangListApi } from '@/apis/inter-api/i18n.ts';
 
-const APP_MARKETPLACE_MENU: ResourceProps = {
-  id: 'frontend-app-marketplace',
-  type: 2,
-  icon: 'menu.tag.apps',
-  code: 'app-marketplace',
-  showName: '应用市场',
-  showDescription: '部署和管理 OpenEMS 等边缘应用',
-  sort: 999,
-  url: '/app-marketplace',
-  urlType: 1,
-  openType: 0,
-  enable: true,
-  homeEnable: true,
+const buildMarketplaceMenu = (lang?: string): ResourceProps => {
+  const currentLang = lang || useI18nStore.getState().lang || storageOpt.getOrigin(SUPOS_LANG) || defaultLanguage;
+  const isEnglish = currentLang === I18nEnum.EnUS;
+
+  return {
+    id: 'frontend-app-marketplace',
+    type: 2,
+    icon: 'menu.tag.apps',
+    code: 'app-marketplace',
+    showName: isEnglish ? 'App Marketplace' : '应用市场',
+    showDescription: isEnglish
+      ? 'Deploy and manage edge applications such as OpenEMS'
+      : '部署和管理 OpenEMS 等边缘应用',
+    sort: 999,
+    url: '/app-marketplace',
+    urlType: 1,
+    openType: 0,
+    enable: true,
+    homeEnable: true,
+    isFrontend: true,
+  };
 };
 
 const DEV_LOCAL_SYSTEM_INFO = {
   appTitle: APP_TITLE,
   authEnable: false,
-  lang: 'zh-CN',
+  lang: storageOpt.getOrigin(SUPOS_LANG) || defaultLanguage,
 };
 
 const DEV_LOCAL_USER_INFO = {
@@ -61,18 +69,20 @@ const mergeBuiltinMenus = (
   menuTree: ResourceProps[] = [],
   menuGroup: ResourceProps[] = [],
   homeTree: ResourceProps[] = [],
-  homeGroup: ResourceProps[] = []
+  homeGroup: ResourceProps[] = [],
+  lang?: string
 ) => {
+  const appMarketplaceMenu = buildMarketplaceMenu(lang);
   const exists = menuGroup.some(
-    (item) => item.code?.toLowerCase?.() === APP_MARKETPLACE_MENU.code || item.url === APP_MARKETPLACE_MENU.url
+    (item) => item.code?.toLowerCase?.() === appMarketplaceMenu.code || item.url === appMarketplaceMenu.url
   );
   if (exists) {
     return { menuTree, menuGroup, homeTree, homeGroup };
   }
-  const mergedMenuGroup = [...menuGroup, APP_MARKETPLACE_MENU];
-  const mergedMenuTree = [...menuTree, APP_MARKETPLACE_MENU].sort((a, b) => a.sort - b.sort);
-  const mergedHomeGroup = [...homeGroup, APP_MARKETPLACE_MENU];
-  const mergedHomeTree = [...homeTree, APP_MARKETPLACE_MENU].sort((a, b) => a.sort - b.sort);
+  const mergedMenuGroup = [...menuGroup, appMarketplaceMenu];
+  const mergedMenuTree = [...menuTree, appMarketplaceMenu].sort((a, b) => a.sort - b.sort);
+  const mergedHomeGroup = [...homeGroup, appMarketplaceMenu];
+  const mergedHomeTree = [...homeTree, appMarketplaceMenu].sort((a, b) => a.sort - b.sort);
   return {
     menuTree: mergedMenuTree,
     menuGroup: mergedMenuGroup,
@@ -82,7 +92,8 @@ const mergeBuiltinMenus = (
 };
 
 const applyDevLocalFallback = async () => {
-  const mergedMenus = mergeBuiltinMenus([], [], [], []);
+  const lang = storageOpt.getOrigin(SUPOS_LANG) || defaultLanguage;
+  const mergedMenus = mergeBuiltinMenus([], [], [], [], lang);
   useBaseStore.setState({
     ...initBaseContent,
     homeGroup: mergedMenus.homeGroup,
@@ -90,9 +101,12 @@ const applyDevLocalFallback = async () => {
     menuGroup: mergedMenus.menuGroup,
     menuTree: mergedMenus.menuTree,
     currentUserInfo: DEV_LOCAL_USER_INFO as UserInfoProps,
-    systemInfo: DEV_LOCAL_SYSTEM_INFO,
+    systemInfo: {
+      ...DEV_LOCAL_SYSTEM_INFO,
+      lang,
+    },
   });
-  return initI18n(storageOpt.getOrigin(SUPOS_LANG) || defaultLanguage);
+  return initI18n(lang);
 };
 
 /**
@@ -193,6 +207,11 @@ const updateBaseStore = async (isFirst: boolean = false) => {
       // 国际化语言包list
       await getLangList();
 
+      const _lang = await fetchUserLanguage({
+        userId: info?.sub,
+        lang: systemInfo?.lang,
+      });
+
       // 通过用户的资源池  拿到 - 菜单资源 和 操作资源
       const { buttonGroup, others } = multiGroupByCondition(info?.resourceList, criteria);
       // 拿到 拒绝优先的 菜单资源、 操作资源
@@ -212,7 +231,7 @@ const updateBaseStore = async (isFirst: boolean = false) => {
       const enableRoutes = allRoutes?.filter((f) => f.enable);
       // 获取终极菜单
       const { homeTree, homeTabGroup, homeGroup, menuGroup, menuTree } = buildResourceTrees(enableRoutes);
-      const mergedMenus = mergeBuiltinMenus(menuTree, menuGroup, homeTree, homeGroup);
+      const mergedMenus = mergeBuiltinMenus(menuTree, menuGroup, homeTree, homeGroup, _lang);
       const allButtonGroup = resource?.filter((r: ResourceProps) => r.type === 3);
       const _buttonList =
         systemInfo?.authEnable === false || info?.superAdmin === true
@@ -272,11 +291,6 @@ const updateBaseStore = async (isFirst: boolean = false) => {
       } else {
         storageOpt.set(SUPOS_UNS_TREE, { state: { lazyTree: systemInfo?.lazyTree }, version: 0 });
       }
-      // 请求国际化语言
-      const _lang = await fetchUserLanguage({
-        userId: currentUserInfo?.sub,
-        lang: systemInfo?.lang,
-      });
       // 首次需要初始化语言包
       return await initI18n(_lang);
     } catch (_) {
@@ -299,7 +313,13 @@ const updateBaseStore = async (isFirst: boolean = false) => {
         );
         const enableRoutes = allRoutes?.filter((f) => f.enable);
         const { homeTree, homeTabGroup, homeGroup, menuGroup, menuTree } = buildResourceTrees(enableRoutes);
-        const mergedMenus = mergeBuiltinMenus(menuTree, menuGroup, homeTree, homeGroup);
+        const mergedMenus = mergeBuiltinMenus(
+          menuTree,
+          menuGroup,
+          homeTree,
+          homeGroup,
+          useI18nStore.getState().lang || storageOpt.getOrigin(SUPOS_LANG) || defaultLanguage
+        );
         const allButtonGroup = resource?.filter((r: ResourceProps) => r.type === 3);
         const _buttonList =
           baseState?.systemInfo?.authEnable === false || baseState?.currentUserInfo?.superAdmin === true

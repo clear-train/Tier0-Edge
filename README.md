@@ -48,6 +48,8 @@ This repository now includes an initial **App Marketplace** entry in the web UI.
 - A new `App Marketplace` page is available in the frontend navigation and can also be reached from the UNS toolbar.
 - The OpenEMS card is no longer a static demo. It maps deployment fields to an OpenEMS Docker topology (`Edge Only` or `Edge + UI`) and generates a Docker Compose preview in the UI.
 - A local deployment API was added to `frontend/apps/services-express` under `/open-api/app-marketplace`. It stores generated compose files under a runtime directory and executes `docker compose up -d` / `docker compose down` for install and uninstall.
+- The first integration flow between the two platforms is now `Tier0 -> OpenEMS`: the marketplace modal can define Tier0 UNS to OpenEMS Channel mappings, and the local service will poll Tier0 current values and write them into OpenEMS via the official REST controller (`/rest/channel/<Component-ID>/<Channel-ID>`).
+- OpenEMS deployment now exposes the Edge REST-API port as part of the compose model, so the local bridge can write values into the deployed Edge instance without additional manual networking.
 - Development-mode fallback and mock data were added so the marketplace page can still be opened when the original backend proxy is unavailable.
 
 Relevant implementation areas:
@@ -56,11 +58,13 @@ Relevant implementation areas:
 - `frontend/apps/web/src/stores/base/index.ts`
 - `frontend/apps/web/src/pages/uns/TopDom.tsx`
 - `frontend/apps/services-express/src/routes/open-api/app-marketplace.ts`
+- `frontend/apps/services-express/src/modules/app-marketplace`
 
 Local development notes:
 
 - Start the UI and local service together with `npx pnpm@10.13.1 dev:marketplace` from the `frontend` directory.
 - Docker must be available on the host if you want OpenEMS install/uninstall to actually run.
+- Tier0 must be reachable from the local bridge, defaulting to `http://localhost:8080`.
 
 ### 1.Linux
 #### 1.1 Operating Environment

@@ -138,6 +138,24 @@ services:
   id: 4007e6c1-6ccc-4747-9b96-7bb3f5f78b32
   client_certificate: ~
   read_timeout: 60000
+- name: frontend-app-marketplace-open-api
+  path: /open-api/app-marketplace
+  protocol: http
+  tags: []
+  ca_certificates: ~
+  retries: 5
+  created_at: 1764864000
+  port: 4000
+  updated_at: 1764864000
+  enabled: true
+  host: frontend
+  tls_verify: ~
+  write_timeout: 60000
+  connect_timeout: 60000
+  tls_verify_depth: ~
+  id: 5f26a83d-9090-4e0a-9952-4e5b7ec9a201
+  client_certificate: ~
+  read_timeout: 60000
 - name: event-flow-proxy
   path: /service-api/supos/proxy/event/flows
   protocol: http
@@ -1235,6 +1253,30 @@ routes:
   protocols:
   - http
   - https
+- name: app-marketplace-open-api
+  sources: ~
+  preserve_host: false
+  destinations: ~
+  headers: ~
+  methods: ~
+  https_redirect_status_code: 426
+  service: 5f26a83d-9090-4e0a-9952-4e5b7ec9a201
+  strip_path: true
+  paths:
+  - /marketplace-api
+  created_at: 1764864000
+  updated_at: 1764864000
+  response_buffering: true
+  path_handling: v0
+  regex_priority: 0
+  hosts: ~
+  request_buffering: true
+  snis: ~
+  id: 67929e5a-223a-4e9f-86a9-25de8e809061
+  tags: ~
+  protocols:
+  - http
+  - https
 - name: SourceFlow
   sources: ~
   preserve_host: false
@@ -1950,6 +1992,7 @@ plugins:
     - ^/tier0-login.*$
     - ^/403$
     - ^/open-api/.*$
+    - ^/marketplaceapi/.*$
     - ^/keycloak.*$
     - ^/nodered.*$
     - ^/files.*$

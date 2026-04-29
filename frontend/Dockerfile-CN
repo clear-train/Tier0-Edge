@@ -18,6 +18,9 @@ RUN npm install -g pnpm
 # Then install all dependencies
 RUN pnpm install
 
+# Vite production build needs more heap inside Docker than Node's default.
+ENV NODE_OPTIONS=--max-old-space-size=4096
+
 # build
 RUN pnpm run build:web
 RUN pnpm run build:servicesExpress

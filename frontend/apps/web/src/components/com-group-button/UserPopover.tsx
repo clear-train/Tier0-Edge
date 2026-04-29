@@ -239,7 +239,9 @@ const UserPopover: FC<PopoverProps> = ({ children, ...restProps }) => {
                     console.log(error);
                   }
 
-                  return initI18n(v, pluginLang);
+                  await initI18n(v, pluginLang);
+                  await fetchBaseStore?.();
+                  return;
                 }}
                 value={lang}
                 style={{ height: 28, width: 94, backgroundColor: 'var(--supos-bg-color) !important' }}

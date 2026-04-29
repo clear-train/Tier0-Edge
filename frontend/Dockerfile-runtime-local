@@ -1,0 +1,22 @@
+FROM node:22-alpine
+
+RUN npm config set registry https://registry.npmmirror.com/
+RUN apk add --no-cache docker-cli docker-cli-compose
+
+WORKDIR /app
+
+RUN npm install -g serve concurrently pnpm
+
+COPY apps/web/dist ./web-dist
+COPY apps/services-express/dist ./services-express-dist
+COPY apps/services-express/package.json ./services-express-dist/
+COPY pnpm-workspace.yaml ./services-express-dist/
+
+WORKDIR /app/services-express-dist
+RUN pnpm install --production --ignore-scripts
+
+WORKDIR /app
+
+EXPOSE 3000 4000
+
+CMD ["concurrently", "serve -s /app/web-dist -l 3000", "node /app/services-express-dist/index.js"]
