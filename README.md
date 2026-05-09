@@ -48,7 +48,9 @@ This repository now includes an initial **App Marketplace** entry in the web UI.
 - A new `App Marketplace` page is available in the frontend navigation and can also be reached from the UNS toolbar.
 - The OpenEMS card is no longer a static demo. It maps deployment fields to an OpenEMS Docker topology (`Edge Only` or `Edge + UI`) and generates a Docker Compose preview in the UI.
 - A local deployment API was added to `frontend/apps/services-express` under `/open-api/app-marketplace`. It stores generated compose files under a runtime directory and executes `docker compose up -d` / `docker compose down` for install and uninstall.
-- The first integration flow between the two platforms is now `Tier0 -> OpenEMS`: the marketplace modal can define Tier0 UNS to OpenEMS Channel mappings, and the local service will poll Tier0 current values and write them into OpenEMS via the official REST controller (`/rest/channel/<Component-ID>/<Channel-ID>`).
+- The integration flow is now bidirectional. `Tier0 -> OpenEMS` subscribes to Tier0 MQTT topics and writes values into OpenEMS channels or component config properties. `OpenEMS -> Tier0` polls OpenEMS channels/config properties and publishes the feedback into Tier0 MQTT as ISA95-aligned UNS topics.
+- OpenEMS feedback creates paired ISA95 topics for each default channel: `State` topics for the live UNS tree and `Metric` topics for time-series friendly numeric history. Examples: `V1/Tier0Site/EnergyArea/OpenEMSLine/EdgeCell/OpenEMS/State/essSoc` and `V1/Tier0Site/EnergyArea/OpenEMSLine/EdgeCell/OpenEMS/Metric/essSoc`.
+- The OpenEMS UI deployment step patches the official `openems/ui-edge` image at runtime so Edge-only deployments default to English and do not show a false `updateUserLanguage` failure when language is changed locally.
 - OpenEMS deployment now exposes the Edge REST-API port as part of the compose model, so the local bridge can write values into the deployed Edge instance without additional manual networking.
 - Development-mode fallback and mock data were added so the marketplace page can still be opened when the original backend proxy is unavailable.
 
@@ -65,6 +67,7 @@ Local development notes:
 - Start the UI and local service together with `npx pnpm@10.13.1 dev:marketplace` from the `frontend` directory.
 - Docker must be available on the host if you want OpenEMS install/uninstall to actually run.
 - Tier0 must be reachable from the local bridge, defaulting to `http://localhost:8080`.
+- To verify feedback, install OpenEMS from the marketplace, enable **OpenEMS -> Tier0 ISA95 Feedback**, keep the default MQTT URL `mqtt://emqx:1883`, then click **Run Sync Now**. In Tier0 UNS, open `V1/Tier0Site/EnergyArea/OpenEMSLine/EdgeCell/OpenEMS/State` for live tree values, or `V1/Tier0Site/EnergyArea/OpenEMSLine/EdgeCell/OpenEMS/Metric` for numeric values with `value`, `timeStamp`, and `quality` fields.
 
 ### 1.Linux
 #### 1.1 Operating Environment

@@ -121,6 +121,111 @@
   margin-bottom: 12px;
 }
 
+.feedbackDashboard {
+  padding: 14px;
+  margin-bottom: 16px;
+  border: 1px solid var(--supos-home-border-color);
+  border-radius: 8px;
+  background: var(--supos-uns-button-color);
+}
+
+.dashboardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+
+  h3 {
+    margin: 0;
+    color: var(--supos-text-color);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 6px 0 0;
+    color: var(--supos-text-color-secondary);
+    line-height: 20px;
+  }
+}
+
+.dashboardMeta {
+  flex: 0 0 auto;
+  color: var(--supos-text-color-secondary);
+  font-size: 12px;
+}
+
+.dashboardControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dashboardSelector {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.dashboardSwitch {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--supos-text-color-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.dashboardCard {
+  padding: 12px;
+  border: 1px solid var(--supos-home-border-color);
+  border-radius: 8px;
+  background: var(--supos-bg-color);
+}
+
+.dashboardCardHeader,
+.dashboardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--supos-text-color-secondary);
+  font-size: 12px;
+}
+
+.dashboardValue {
+  margin: 10px 0 8px;
+  color: var(--supos-table-first-color);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.sparkline {
+  width: 100%;
+  height: 44px;
+  margin-bottom: 8px;
+
+  polyline {
+    fill: none;
+    stroke: var(--supos-theme-color);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+  }
+}
+
+.dashboardEmpty {
+  color: var(--supos-text-color-secondary);
+}
+
 .formGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -213,6 +318,10 @@
   margin-bottom: 12px;
 }
 
+.fullWidthField {
+  grid-column: 1 / -1;
+}
+
 @media (width <= 768px) {
   .wrapper {
     padding: 16px;
@@ -221,10 +330,16 @@
   .headerMeta,
   .detailMeta,
   .composeTitle,
+  .dashboardHeader,
+  .dashboardControls,
   .syncSectionHeader,
   .mappingCardHeader {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .dashboardSelector {
+    width: 100%;
   }
 
   .formGrid {

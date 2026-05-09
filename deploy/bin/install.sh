@@ -99,8 +99,13 @@ if [ ! -f "$SCRIPT_DIR/../.env.tmp" ]; then
   source "$SCRIPT_DIR/util/set-temp-env.sh" "$SCRIPT_DIR/../" "${COMPOSE_PROFILE_ARGS[@]}"
 fi
 
+COMPOSE_UP_ARGS=(up -d)
+if [[ "${LOCAL_FRONTEND:-false}" == "true" || "${LOCAL_FRONTEND:-false}" == "1" ]]; then
+  COMPOSE_UP_ARGS=(up -d --build)
+fi
+
 info "Starting Docker containers in detached mode..."
-if ! docker compose --env-file "$ENV_FILE" --env-file "$SCRIPT_DIR/../.env.tmp" --project-name tier0 "${COMPOSE_PROFILE_ARGS[@]}" "${COMPOSE_FILES[@]}" up -d; then
+if ! docker compose --env-file "$ENV_FILE" --env-file "$SCRIPT_DIR/../.env.tmp" --project-name tier0 "${COMPOSE_PROFILE_ARGS[@]}" "${COMPOSE_FILES[@]}" "${COMPOSE_UP_ARGS[@]}"; then
     error "Failed to start Docker containers. Please check the logs above."
     exit 1
 fi

@@ -36,15 +36,44 @@ export interface Tier0ToOpenEmsSyncMappingPayload {
   offset: string | number;
 }
 
+export interface OpenEmsToTier0SyncMappingPayload {
+  id?: string;
+  name: string;
+  enabled: boolean;
+  tier0MqttUrl: string;
+  tier0TargetTopic: string;
+  tier0PayloadField: string;
+  openemsSourceType: 'channel' | 'config-property';
+  openemsComponentId: string;
+  openemsChannelId: string;
+  openemsUsername: string;
+  openemsPassword: string;
+  valueType: 'number' | 'boolean' | 'string';
+  pollIntervalMs: string | number;
+  scale: string | number;
+  offset: string | number;
+  isa95Enterprise: string;
+  isa95Site: string;
+  isa95Area: string;
+  isa95Line: string;
+  isa95Cell: string;
+  isa95Asset: string;
+  isa95Category: 'State' | 'Action' | 'Metric';
+  isa95Tag: string;
+}
+
 export interface Tier0ToOpenEmsSyncPayload {
   enabled: boolean;
   mappings: Tier0ToOpenEmsSyncMappingPayload[];
+  feedbackEnabled: boolean;
+  feedbackMappings: OpenEmsToTier0SyncMappingPayload[];
 }
 
 export interface Tier0ToOpenEmsSyncConfig {
   appId: string;
-  direction: 'tier0-to-openems';
+  direction: 'bidirectional';
   enabled: boolean;
+  feedbackEnabled: boolean;
   updatedAt?: string;
   lastRunAt?: string;
   lastSuccessAt?: string;
@@ -57,6 +86,30 @@ export interface Tier0ToOpenEmsSyncConfig {
       lastError?: string;
     }
   >;
+  feedbackMappings: Array<
+    OpenEmsToTier0SyncMappingPayload & {
+      id: string;
+      lastValue?: string | number | boolean | null;
+      lastSyncedAt?: string;
+      lastError?: string;
+      lastSourceValue?: string | number | boolean | null;
+    }
+  >;
+}
+
+export interface OpenEmsFeedbackHistoryPoint {
+  mappingId: string;
+  mappingName: string;
+  tag: string;
+  topic: string;
+  channel: string;
+  value: string | number | boolean;
+  sourceValue: string | number | boolean;
+  unit?: string;
+  openemsType?: string;
+  description?: string;
+  timestamp: number;
+  syncedAt: string;
 }
 
 // 获取应用市场列表
@@ -67,6 +120,11 @@ export const getMarketplaceAppDetailApi = async (appId: string) => api.get(`/app
 
 export const getMarketplaceAppSyncApi = async (appId: string): Promise<Tier0ToOpenEmsSyncConfig> =>
   api.get(`/apps/${appId}/sync/tier0-openems`);
+
+export const getMarketplaceAppSyncHistoryApi = async (
+  appId: string,
+  limit = 240
+): Promise<OpenEmsFeedbackHistoryPoint[]> => api.get(`/apps/${appId}/sync/tier0-openems/history?limit=${limit}`);
 
 export const updateMarketplaceAppSyncApi = async (appId: string, payload: Tier0ToOpenEmsSyncPayload) =>
   api.put(`/apps/${appId}/sync/tier0-openems`, payload);

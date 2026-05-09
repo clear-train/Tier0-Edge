@@ -33,6 +33,8 @@ export const getAppDir = (appId: string) => path.join(runtimeRoot, appId);
 export const getComposeFilePath = (appId: string) => path.join(getAppDir(appId), 'docker-compose.generated.yml');
 export const getMetaFilePath = (appId: string) => path.join(getAppDir(appId), 'deployment.json');
 export const getSyncFilePath = (appId: string) => path.join(getAppDir(appId), 'tier0-openems-sync.json');
+export const getSyncHistoryFilePath = (appId: string) =>
+  path.join(getAppDir(appId), 'tier0-openems-feedback-history.json');
 
 export const readDeployment = async (appId: string): Promise<DeploymentRecord | null> => {
   const metaFile = getMetaFilePath(appId);

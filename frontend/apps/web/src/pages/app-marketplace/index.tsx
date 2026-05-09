@@ -10,6 +10,7 @@ import type {
   AppDeployField,
   MarketplaceApp,
   MarketplaceAppSyncSummary,
+  OpenEmsTier0FeedbackFormMapping,
   Tier0OpenEmsFormMapping,
   Tier0OpenEmsSyncFormValues,
 } from './types';
@@ -17,15 +18,22 @@ import { buildOpenEmsComposeYaml, buildOpenEmsDeploymentSpec, type OpenEmsCompos
 import {
   deployMarketplaceAppApi,
   getMarketplaceAppDetailApi,
+  getMarketplaceAppSyncHistoryApi,
   getMarketplaceAppSyncApi,
   getMarketplaceAppsApi,
   openMarketplaceAppApi,
   runMarketplaceAppSyncApi,
   uninstallMarketplaceAppApi,
   updateMarketplaceAppSyncApi,
+  type OpenEmsFeedbackHistoryPoint,
   type Tier0ToOpenEmsSyncConfig,
 } from '@/apis/inter-api/app-marketplace';
-import { buildTier0SyncPayload, createDefaultTier0SyncValues, toTier0SyncFormValues } from './tier0-sync';
+import {
+  buildIsa95Topic,
+  buildTier0SyncPayload,
+  createDefaultTier0SyncValues,
+  toTier0SyncFormValues,
+} from './tier0-sync';
 import styles from './index.module.scss';
 
 const renderField = (field: AppDeployField, getText: (key: string | undefined, fallback: string) => string) => {
@@ -51,6 +59,9 @@ const summarizeSync = (config: Tier0ToOpenEmsSyncConfig): MarketplaceAppSyncSumm
   enabled: Boolean(config.enabled),
   mappingCount: config.mappings.length,
   enabledMappingCount: config.mappings.filter((mapping) => mapping.enabled).length,
+  feedbackEnabled: Boolean(config.feedbackEnabled),
+  feedbackMappingCount: config.feedbackMappings?.length || 0,
+  feedbackEnabledMappingCount: config.feedbackMappings?.filter((mapping) => mapping.enabled).length || 0,
   lastRunAt: config.lastRunAt,
   lastSuccessAt: config.lastSuccessAt,
   lastError: config.lastError,
@@ -68,6 +79,60 @@ const formatTime = (value?: string) => {
   }
 };
 
+const normalizeDashboardValue = (value: unknown) => {
+  if (value && typeof value === 'object' && 'value' in value) {
+    return (value as { value?: unknown }).value;
+  }
+  return value;
+};
+
+const toNumericValue = (value: unknown) => {
+  const numericValue = Number(normalizeDashboardValue(value));
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
+const formatDashboardValue = (value: unknown, unit?: string) => {
+  const normalizedValue = normalizeDashboardValue(value);
+  const numericValue = toNumericValue(value);
+  const formattedValue =
+    numericValue === null
+      ? String(normalizedValue ?? '-')
+      : Math.abs(numericValue) >= 1000
+        ? numericValue.toFixed(0)
+        : numericValue.toFixed(2).replace(/\.?0+$/, '');
+  return unit ? `${formattedValue} ${unit}` : formattedValue;
+};
+
+const isZeroOrEmptyDashboardValue = (value: unknown) => {
+  const normalizedValue = normalizeDashboardValue(value);
+  if (normalizedValue === undefined || normalizedValue === null || normalizedValue === '') {
+    return true;
+  }
+
+  const numericValue = toNumericValue(normalizedValue);
+  return numericValue !== null && numericValue === 0;
+};
+
+const buildSparklinePoints = (history: OpenEmsFeedbackHistoryPoint[]) => {
+  const values = history.map((point) => toNumericValue(point.value)).filter((value): value is number => value !== null);
+  if (values.length < 2) {
+    return '';
+  }
+
+  const width = 160;
+  const height = 44;
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const range = maxValue - minValue || 1;
+  return values
+    .map((value, index) => {
+      const x = (index / Math.max(values.length - 1, 1)) * width;
+      const y = height - ((value - minValue) / range) * height;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+};
+
 const AppMarketplace = () => {
   const formatMessage = useTranslate();
   const { message } = App.useApp();
@@ -76,11 +141,15 @@ const AppMarketplace = () => {
   const [submitting, setSubmitting] = useState(false);
   const [syncSubmitting, setSyncSubmitting] = useState(false);
   const [activeSyncConfig, setActiveSyncConfig] = useState<Tier0ToOpenEmsSyncConfig | null>(null);
+  const [syncHistory, setSyncHistory] = useState<OpenEmsFeedbackHistoryPoint[]>([]);
+  const [dashboardSelectedTags, setDashboardSelectedTags] = useState<string[]>([]);
+  const [dashboardHideZero, setDashboardHideZero] = useState(true);
   const [form] = Form.useForm<Record<string, any>>();
 
   const formValues = Form.useWatch([], form) as (OpenEmsComposeValues & Tier0OpenEmsSyncFormValues) | undefined;
   const composeYaml = activeApp && formValues ? buildOpenEmsComposeYaml(formValues as OpenEmsComposeValues) : '';
   const syncEnabled = Boolean(formValues?.syncEnabled);
+  const feedbackEnabled = Boolean(formValues?.feedbackEnabled);
 
   const activeSyncAlert = useMemo(() => {
     if (!activeSyncConfig?.lastError) {
@@ -88,6 +157,59 @@ const AppMarketplace = () => {
     }
     return activeSyncConfig.lastError;
   }, [activeSyncConfig]);
+
+  const historyByTag = useMemo(() => {
+    const groups = new Map<string, OpenEmsFeedbackHistoryPoint[]>();
+    syncHistory.forEach((point) => {
+      const group = groups.get(point.tag) || [];
+      group.push(point);
+      groups.set(point.tag, group);
+    });
+    return groups;
+  }, [syncHistory]);
+
+  const allDashboardItems = useMemo(() => {
+    const seen = new Set<string>();
+    return (activeSyncConfig?.feedbackMappings || [])
+      .filter((mapping) => mapping.enabled && mapping.isa95Category === 'State')
+      .filter((mapping) => {
+        if (seen.has(mapping.isa95Tag)) {
+          return false;
+        }
+        seen.add(mapping.isa95Tag);
+        return true;
+      })
+      .map((mapping) => {
+        const history = historyByTag.get(mapping.isa95Tag) || [];
+        const latest = history[history.length - 1];
+        return {
+          mapping,
+          latest,
+          history: history.slice(-30),
+        };
+      });
+  }, [activeSyncConfig?.feedbackMappings, historyByTag]);
+
+  const dashboardTagOptions = useMemo(
+    () =>
+      allDashboardItems.map(({ mapping, latest }) => ({
+        label: `${mapping.isa95Tag}${latest?.unit ? ` (${latest.unit})` : ''}`,
+        value: mapping.isa95Tag,
+      })),
+    [allDashboardItems]
+  );
+
+  const dashboardItems = useMemo(() => {
+    const selectedTags = new Set(dashboardSelectedTags);
+    return allDashboardItems
+      .filter(({ mapping }) => selectedTags.size === 0 || selectedTags.has(mapping.isa95Tag))
+      .filter(({ mapping, latest }) => {
+        if (!dashboardHideZero) {
+          return true;
+        }
+        return !isZeroOrEmptyDashboardValue(latest?.value ?? mapping.lastValue);
+      });
+  }, [allDashboardItems, dashboardHideZero, dashboardSelectedTags]);
 
   const getText = (key: string | undefined, fallback: string) =>
     key ? formatMessage(key, undefined, fallback) : fallback;
@@ -125,6 +247,35 @@ const AppMarketplace = () => {
 
     void loadApps();
   }, []);
+
+  useEffect(() => {
+    if (!activeApp || activeApp.status !== 'open') {
+      setSyncHistory([]);
+      setDashboardSelectedTags([]);
+      return;
+    }
+
+    let cancelled = false;
+    const loadHistory = async () => {
+      try {
+        const history = await getMarketplaceAppSyncHistoryApi(activeApp.id, 360);
+        if (!cancelled) {
+          setSyncHistory(Array.isArray(history) ? history : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setSyncHistory([]);
+        }
+      }
+    };
+
+    void loadHistory();
+    const timer = window.setInterval(() => void loadHistory(), 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [activeApp?.id, activeApp?.status]);
 
   const buildDefaultFormValues = (app: MarketplaceApp) => {
     const deployDefaults = app.deployFields.reduce(
@@ -201,10 +352,13 @@ const AppMarketplace = () => {
                     ...item,
                     status: 'install',
                     sync: {
-                      direction: 'tier0-to-openems',
+                      direction: 'bidirectional',
                       enabled: false,
                       mappingCount: item.sync?.mappingCount || 0,
                       enabledMappingCount: 0,
+                      feedbackEnabled: false,
+                      feedbackMappingCount: item.sync?.feedbackMappingCount || 0,
+                      feedbackEnabledMappingCount: 0,
                     },
                   }
                 : item
@@ -226,6 +380,15 @@ const AppMarketplace = () => {
           'marketplace.syncMappingRequired',
           undefined,
           'At least one Tier0 to OpenEMS mapping is required when sync is enabled'
+        )
+      );
+    }
+    if (payload.feedbackEnabled && !payload.feedbackMappings.length) {
+      throw new Error(
+        formatMessage(
+          'marketplace.feedbackMappingRequired',
+          undefined,
+          'At least one OpenEMS to Tier0 feedback mapping is required when feedback sync is enabled'
         )
       );
     }
@@ -439,6 +602,17 @@ const AppMarketplace = () => {
                     ) : null}
                   </div>
                 ) : null}
+                {app.sync?.feedbackEnabled ? (
+                  <div className={styles.syncSummary}>
+                    <span>
+                      {formatMessage(
+                        'marketplace.feedbackSummaryEnabled',
+                        { count: app.sync.feedbackEnabledMappingCount },
+                        'OpenEMS -> Tier0 feedback enabled ({count} mappings)'
+                      )}
+                    </span>
+                  </div>
+                ) : null}
               </Card>
             ))}
           </div>
@@ -454,6 +628,7 @@ const AppMarketplace = () => {
         onCancel={() => {
           setActiveApp(null);
           setActiveSyncConfig(null);
+          setSyncHistory([]);
           form.resetFields();
         }}
         onOk={() => void onSubmit()}
@@ -497,6 +672,87 @@ const AppMarketplace = () => {
             message={formatMessage('marketplace.syncLastError', undefined, 'Latest sync error')}
             description={activeSyncAlert}
           />
+        ) : null}
+
+        {activeApp?.status === 'open' && activeSyncConfig?.feedbackEnabled ? (
+          <div className={styles.feedbackDashboard}>
+            <div className={styles.dashboardHeader}>
+              <div>
+                <h3>{formatMessage('marketplace.feedbackDashboard', undefined, 'OpenEMS Feedback Dashboard')}</h3>
+                <p>
+                  {formatMessage(
+                    'marketplace.feedbackDashboardHint',
+                    undefined,
+                    'Live State values with local history captured from OpenEMS feedback polling.'
+                  )}
+                </p>
+              </div>
+              <span className={styles.dashboardMeta}>
+                {formatMessage('marketplace.historySamples', { count: syncHistory.length }, '{count} history samples')}
+              </span>
+            </div>
+            <div className={styles.dashboardControls}>
+              <Select
+                className={styles.dashboardSelector}
+                mode="multiple"
+                allowClear
+                maxTagCount="responsive"
+                value={dashboardSelectedTags}
+                options={dashboardTagOptions}
+                placeholder={formatMessage(
+                  'marketplace.feedbackDashboardSelectPlaceholder',
+                  undefined,
+                  'Select metrics to display'
+                )}
+                onChange={setDashboardSelectedTags}
+              />
+              <label className={styles.dashboardSwitch}>
+                <Switch size="small" checked={dashboardHideZero} onChange={setDashboardHideZero} />
+                <span>{formatMessage('marketplace.hideZeroDashboardValues', undefined, 'Hide zero/empty values')}</span>
+              </label>
+            </div>
+            {dashboardItems.length ? (
+              <div className={styles.dashboardGrid}>
+                {dashboardItems.map(({ mapping, latest, history }) => {
+                  const sparklinePoints = buildSparklinePoints(history);
+                  const value = latest?.value ?? mapping.lastValue;
+                  const unit = latest?.unit;
+                  return (
+                    <div key={mapping.id || mapping.isa95Tag} className={styles.dashboardCard}>
+                      <div className={styles.dashboardCardHeader}>
+                        <span>{mapping.isa95Tag}</span>
+                        <span>{unit || latest?.openemsType || mapping.valueType}</span>
+                      </div>
+                      <div className={styles.dashboardValue}>{formatDashboardValue(value, unit)}</div>
+                      <svg className={styles.sparkline} viewBox="0 0 160 44" preserveAspectRatio="none">
+                        <polyline points={sparklinePoints} />
+                      </svg>
+                      <div className={styles.dashboardFooter}>
+                        <span>
+                          {mapping.openemsComponentId}/{mapping.openemsChannelId}
+                        </span>
+                        <span>{formatTime(latest?.syncedAt || mapping.lastSyncedAt)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={styles.dashboardEmpty}>
+                {allDashboardItems.length
+                  ? formatMessage(
+                      'marketplace.feedbackDashboardFilteredEmpty',
+                      undefined,
+                      'No dashboard cards match the current filters.'
+                    )
+                  : formatMessage(
+                      'marketplace.feedbackDashboardEmpty',
+                      undefined,
+                      'No feedback history yet. Keep feedback enabled for one polling cycle.'
+                    )}
+              </div>
+            )}
+          </div>
         ) : null}
 
         <Form form={form} layout="vertical">
@@ -884,6 +1140,368 @@ const AppMarketplace = () => {
 
                   <Button onClick={() => add(createDefaultTier0SyncValues().syncMappings[0])}>
                     {formatMessage('marketplace.addMapping', undefined, 'Add Mapping')}
+                  </Button>
+                </div>
+              )}
+            </Form.List>
+          ) : null}
+
+          <Divider />
+
+          <div className={styles.syncSectionHeader}>
+            <div className={styles.syncSectionTitle}>
+              <h3>{formatMessage('marketplace.feedbackTitle', undefined, 'OpenEMS -> Tier0 ISA95 Feedback')}</h3>
+              <p>
+                {formatMessage(
+                  'marketplace.feedbackHint',
+                  undefined,
+                  'Poll real OpenEMS channels and publish them back to Tier0 UNS/MQTT. Defaults create ISA95-aligned State topics for live tree display, while the marketplace keeps local history for dashboard trends.'
+                )}
+              </p>
+            </div>
+            <Form.Item name="feedbackEnabled" valuePropName="checked" noStyle>
+              <Switch />
+            </Form.Item>
+          </div>
+
+          {feedbackEnabled ? (
+            <Form.List name="feedbackMappings">
+              {(fields, { add, remove }) => (
+                <div className={styles.syncSectionBody}>
+                  {fields.map((field) => {
+                    const mappingStatus = formValues?.feedbackMappings?.[field.name] as
+                      | OpenEmsTier0FeedbackFormMapping
+                      | undefined;
+                    const isa95TopicPreview = mappingStatus
+                      ? mappingStatus.tier0TargetTopic || buildIsa95Topic(mappingStatus)
+                      : '';
+                    return (
+                      <Card key={field.key} className={styles.mappingCard} size="small">
+                        <div className={styles.mappingCardHeader}>
+                          <span>
+                            {formatMessage(
+                              'marketplace.feedbackMappingTitle',
+                              { index: field.name + 1 },
+                              'Feedback Mapping {index}'
+                            )}
+                          </span>
+                          <Space>
+                            <Form.Item name={[field.name, 'enabled']} valuePropName="checked" noStyle>
+                              <Switch size="small" />
+                            </Form.Item>
+                            {fields.length > 1 ? (
+                              <Button type="text" danger onClick={() => remove(field.name)}>
+                                {formatMessage('common.delete', undefined, 'Delete')}
+                              </Button>
+                            ) : null}
+                          </Space>
+                        </div>
+
+                        <Form.Item name={[field.name, 'id']} hidden>
+                          <Input />
+                        </Form.Item>
+
+                        <div className={styles.formGrid}>
+                          <Form.Item
+                            name={[field.name, 'name']}
+                            label={formatMessage('marketplace.syncMappingName', undefined, 'Mapping Name')}
+                            rules={[
+                              {
+                                required: true,
+                                message: formatMessage(
+                                  'marketplace.required',
+                                  { name: 'Mapping Name' },
+                                  '{name} is required'
+                                ),
+                              },
+                            ]}
+                          >
+                            <Input placeholder="OpenEMS -> Tier0 ISA95" />
+                          </Form.Item>
+
+                          <Form.Item
+                            name={[field.name, 'pollIntervalMs']}
+                            label={formatMessage('marketplace.syncInterval', undefined, 'Poll Interval (ms)')}
+                            rules={[
+                              {
+                                required: true,
+                                message: formatMessage(
+                                  'marketplace.required',
+                                  { name: 'Poll Interval' },
+                                  '{name} is required'
+                                ),
+                              },
+                            ]}
+                          >
+                            <Input type="number" placeholder="5000" />
+                          </Form.Item>
+
+                          <Form.Item
+                            name={[field.name, 'tier0MqttUrl']}
+                            label={formatMessage('marketplace.tier0MqttUrl', undefined, 'Tier0 MQTT URL')}
+                            rules={[
+                              {
+                                required: true,
+                                message: formatMessage(
+                                  'marketplace.required',
+                                  { name: 'Tier0 MQTT URL' },
+                                  '{name} is required'
+                                ),
+                              },
+                            ]}
+                          >
+                            <Input placeholder="mqtt://emqx:1883" />
+                          </Form.Item>
+
+                          <Form.Item
+                            name={[field.name, 'tier0PayloadField']}
+                            label={formatMessage('marketplace.feedbackPayloadField', undefined, 'Tier0 Payload Field')}
+                            rules={[
+                              {
+                                required: true,
+                                message: formatMessage(
+                                  'marketplace.required',
+                                  { name: 'Tier0 Payload Field' },
+                                  '{name} is required'
+                                ),
+                              },
+                            ]}
+                          >
+                            <Input placeholder="value" />
+                          </Form.Item>
+
+                          <Form.Item
+                            name={[field.name, 'openemsSourceType']}
+                            label={formatMessage('marketplace.feedbackSourceType', undefined, 'OpenEMS Source Type')}
+                            rules={[
+                              {
+                                required: true,
+                                message: formatMessage(
+                                  'marketplace.required',
+                                  { name: 'OpenEMS Source Type' },
+                                  '{name} is required'
+                                ),
+                              },
+                            ]}
+                          >
+                            <Select
+                              options={[
+                                {
+                                  label: formatMessage('marketplace.channel', undefined, 'Channel'),
+                                  value: 'channel',
+                                },
+                                {
+                                  label: formatMessage('marketplace.configProperty', undefined, 'Config Property'),
+                                  value: 'config-property',
+                                },
+                              ]}
+                            />
+                          </Form.Item>
+
+                          <Form.Item
+                            name={[field.name, 'openemsComponentId']}
+                            label={formatMessage('marketplace.openemsComponentId', undefined, 'OpenEMS Component-ID')}
+                            rules={[
+                              {
+                                required: true,
+                                message: formatMessage(
+                                  'marketplace.required',
+                                  { name: 'OpenEMS Component-ID' },
+                                  '{name} is required'
+                                ),
+                              },
+                            ]}
+                          >
+                            <Input placeholder="meter0" />
+                          </Form.Item>
+
+                          <Form.Item
+                            name={[field.name, 'openemsChannelId']}
+                            label={
+                              mappingStatus?.openemsSourceType === 'config-property'
+                                ? formatMessage('marketplace.openemsPropertyName', undefined, 'OpenEMS Property Name')
+                                : formatMessage('marketplace.openemsChannelId', undefined, 'OpenEMS Channel-ID')
+                            }
+                            rules={[
+                              {
+                                required: true,
+                                message: formatMessage(
+                                  'marketplace.required',
+                                  { name: 'OpenEMS Channel-ID' },
+                                  '{name} is required'
+                                ),
+                              },
+                            ]}
+                          >
+                            <Input placeholder="ActivePower" />
+                          </Form.Item>
+
+                          <Form.Item
+                            name={[field.name, 'valueType']}
+                            label={formatMessage('marketplace.valueType', undefined, 'Value Type')}
+                            rules={[
+                              {
+                                required: true,
+                                message: formatMessage(
+                                  'marketplace.required',
+                                  { name: 'Value Type' },
+                                  '{name} is required'
+                                ),
+                              },
+                            ]}
+                          >
+                            <Select
+                              options={[
+                                { label: formatMessage('marketplace.number', undefined, 'Number'), value: 'number' },
+                                { label: formatMessage('marketplace.boolean', undefined, 'Boolean'), value: 'boolean' },
+                                { label: formatMessage('marketplace.string', undefined, 'String'), value: 'string' },
+                              ]}
+                            />
+                          </Form.Item>
+
+                          <Form.Item
+                            name={[field.name, 'scale']}
+                            label={formatMessage('marketplace.scale', undefined, 'Scale')}
+                            rules={[
+                              {
+                                required: true,
+                                message: formatMessage('marketplace.required', { name: 'Scale' }, '{name} is required'),
+                              },
+                            ]}
+                          >
+                            <Input type="number" placeholder="1" />
+                          </Form.Item>
+
+                          <Form.Item
+                            name={[field.name, 'offset']}
+                            label={formatMessage('marketplace.offset', undefined, 'Offset')}
+                            rules={[
+                              {
+                                required: true,
+                                message: formatMessage(
+                                  'marketplace.required',
+                                  { name: 'Offset' },
+                                  '{name} is required'
+                                ),
+                              },
+                            ]}
+                          >
+                            <Input type="number" placeholder="0" />
+                          </Form.Item>
+
+                          <Form.Item
+                            name={[field.name, 'openemsUsername']}
+                            label={formatMessage('marketplace.openemsUsername', undefined, 'OpenEMS Username')}
+                            rules={[
+                              {
+                                required: true,
+                                message: formatMessage(
+                                  'marketplace.required',
+                                  { name: 'OpenEMS Username' },
+                                  '{name} is required'
+                                ),
+                              },
+                            ]}
+                          >
+                            <Input placeholder="x" />
+                          </Form.Item>
+
+                          <Form.Item
+                            name={[field.name, 'openemsPassword']}
+                            label={formatMessage('marketplace.openemsPassword', undefined, 'OpenEMS Password')}
+                            rules={[
+                              {
+                                required: true,
+                                message: formatMessage(
+                                  'marketplace.required',
+                                  { name: 'OpenEMS Password' },
+                                  '{name} is required'
+                                ),
+                              },
+                            ]}
+                          >
+                            <Input.Password placeholder="user" />
+                          </Form.Item>
+                        </div>
+
+                        <Divider orientation="left" orientationMargin={0}>
+                          {formatMessage('marketplace.isa95Topic', undefined, 'ISA95 Topic')}
+                        </Divider>
+
+                        <div className={styles.formGrid}>
+                          <Form.Item name={[field.name, 'isa95Enterprise']} label="Enterprise">
+                            <Input placeholder="V1" />
+                          </Form.Item>
+                          <Form.Item name={[field.name, 'isa95Site']} label="Site">
+                            <Input placeholder="Tier0Site" />
+                          </Form.Item>
+                          <Form.Item name={[field.name, 'isa95Area']} label="Area">
+                            <Input placeholder="EnergyArea" />
+                          </Form.Item>
+                          <Form.Item name={[field.name, 'isa95Line']} label="Line">
+                            <Input placeholder="OpenEMSLine" />
+                          </Form.Item>
+                          <Form.Item name={[field.name, 'isa95Cell']} label="Cell">
+                            <Input placeholder="EdgeCell" />
+                          </Form.Item>
+                          <Form.Item name={[field.name, 'isa95Asset']} label="Asset">
+                            <Input placeholder="OpenEMS" />
+                          </Form.Item>
+                          <Form.Item
+                            name={[field.name, 'isa95Category']}
+                            label={formatMessage('marketplace.isa95Category', undefined, 'ISA95 Category')}
+                          >
+                            <Select
+                              options={[
+                                { label: 'State', value: 'State' },
+                                { label: 'Action', value: 'Action' },
+                                { label: 'Metric', value: 'Metric' },
+                              ]}
+                            />
+                          </Form.Item>
+                          <Form.Item
+                            name={[field.name, 'isa95Tag']}
+                            label={formatMessage('marketplace.isa95Tag', undefined, 'Tag')}
+                          >
+                            <Input placeholder="meter0ActivePower" />
+                          </Form.Item>
+                          <Form.Item
+                            className={styles.fullWidthField}
+                            name={[field.name, 'tier0TargetTopic']}
+                            label={formatMessage('marketplace.feedbackTargetTopic', undefined, 'Tier0 Target Topic')}
+                          >
+                            <Input
+                              placeholder={
+                                isa95TopicPreview ||
+                                'V1/Tier0Site/EnergyArea/OpenEMSLine/EdgeCell/OpenEMS/State/meter0ActivePower'
+                              }
+                            />
+                          </Form.Item>
+                        </div>
+
+                        <div className={styles.fieldHint}>
+                          {formatMessage('marketplace.isa95Preview', undefined, 'Preview')}: {isa95TopicPreview}
+                        </div>
+
+                        {mappingStatus?.lastSyncedAt || mappingStatus?.lastError ? (
+                          <div className={styles.mappingStatus}>
+                            {mappingStatus.lastSyncedAt ? (
+                              <span>
+                                {formatMessage('marketplace.lastSuccess', undefined, 'Last success')}:&nbsp;
+                                {formatTime(mappingStatus.lastSyncedAt)}
+                              </span>
+                            ) : null}
+                            {mappingStatus.lastError ? (
+                              <span className={styles.mappingStatusError}>{mappingStatus.lastError}</span>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </Card>
+                    );
+                  })}
+
+                  <Button onClick={() => add(createDefaultTier0SyncValues().feedbackMappings[0])}>
+                    {formatMessage('marketplace.addFeedbackMapping', undefined, 'Add Feedback Mapping')}
                   </Button>
                 </div>
               )}

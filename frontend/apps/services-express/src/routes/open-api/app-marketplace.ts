@@ -1,7 +1,11 @@
 import express, { Request, Response } from 'express';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { openEmsSyncManager, type Tier0ToOpenEmsSyncInput } from '@/modules/app-marketplace/openems-sync';
+import {
+  openEmsSyncManager,
+  type Tier0AuthContext,
+  type Tier0ToOpenEmsSyncInput,
+} from '@/modules/app-marketplace/openems-sync';
 import {
   getAppDir,
   getComposeFilePath,
@@ -26,6 +30,11 @@ const sendSuccess = (res: Response, data: unknown) => {
 const sendFailure = (res: Response, message: string, status = 500) => {
   res.status(status).json({ code: status, msg: message });
 };
+
+const getTier0AuthContext = (req: Request): Tier0AuthContext => ({
+  token: String(req.headers['x-sa-token'] || '').trim() || undefined,
+  cookie: String(req.headers.cookie || '').trim() || undefined,
+});
 
 const ensureOpenEmsApp = (appId: string, res: Response) => {
   if (appId !== 'openems') {
@@ -127,7 +136,7 @@ const buildOpenEmsComposeYaml = (params: Record<string, string>) => {
     lines.push(`      - ${normalizedParams.uiLogVolume}:/var/log/nginx:rw`);
     lines.push('    environment:');
     lines.push(`      - WEBSOCKET_HOST=${resolveUiProxyHost(normalizedParams)}`);
-    lines.push(`      - WEBSOCKET_PORT=${resolveUiProxyWebsocketPort(normalizedParams)}`);
+    lines.push(`      - WEBSOCKET_PORT=${resolveUiProxyWebsocketPort()}`);
     lines.push(`      - REST_PORT=${resolveUiProxyRestPort(normalizedParams)}`);
     lines.push('    networks:');
     lines.push(`      - ${TIER0_SHARED_NETWORK}`);
@@ -361,6 +370,35 @@ const enableOpenEmsRestApi = async (containerName: string, port: string) => {
   throw new Error(`OpenEMS REST API on ${containerName}:${port} did not become ready in time`);
 };
 
+const patchOpenEmsUiLanguage = async (containerName: string) => {
+  const patchCommand = [
+    'set -e',
+    'core_file=/var/www/html/openems/chunk-ANM6H4AR.js',
+    'user_file=/var/www/html/openems/chunk-ITVU2RNR.js',
+    'index_file=/var/www/html/openems/index.html',
+    'if [ -f "$core_file" ]; then',
+    '  sed -i \'s/defaultLanguage: "de"/defaultLanguage: "en"/g\' "$core_file"',
+    '  sed -i \'/currentUser().*language.*Language.DEFAULT/c\\    const storedLanguage = localStorage.DEMO_LANGUAGE ?? localStorage.LANGUAGE; const language = Language.getByKey(!storedLanguage || /^de([-_]|$)/i.test(storedLanguage) ? "en" : storedLanguage) ?? Language.EN;\' "$core_file"',
+    '  sed -i \'/authenticateResponse.user.language.toLocaleLowerCase()/c\\        const storedLanguage = localStorage.DEMO_LANGUAGE ?? localStorage.LANGUAGE; const language = Language.getByKey(!storedLanguage || /^de([-_]|$)/i.test(storedLanguage) ? "en" : storedLanguage) ?? Language.EN;\' "$core_file"',
+    'fi',
+    'if [ -f "$user_file" ]; then',
+    '  sed -i \'s#this.websocket.sendRequest(new UpdateUserLanguageRequest({ language: language.key })).then(() => {#Promise.resolve().then(() => {#\' "$user_file"',
+    '  sed -i \'s#this.service.toast(this.translate.instant("GENERAL.CHANGE_FAILED") + "\\\\n" + reason.error.message, "danger");#console.warn("OpenEMS Edge does not persist user language", reason);#\' "$user_file"',
+    'fi',
+    'language_script=\'<script id="tier0-default-openems-language">try{const setEn=(k)=>{const v=localStorage[k];if(!v||/^de([-_]|$)/i.test(v)){localStorage[k]="en";}};setEn("LANGUAGE");setEn("DEMO_LANGUAGE");}catch(e){}</script>\'',
+    'if [ -f "$index_file" ] && grep -q "tier0-default-openems-language" "$index_file"; then',
+    '  sed -i "s#<script id=\\"tier0-default-openems-language\\">.*</script>#$language_script#" "$index_file"',
+    'elif [ -f "$index_file" ]; then',
+    '  sed -i "s#<app-root></app-root>#$language_script\\n  <app-root></app-root>#" "$index_file"',
+    'fi',
+    'nginx -s reload >/dev/null 2>&1 || true',
+  ].join('\n');
+
+  await execFileAsync('docker', ['exec', containerName, 'sh', '-lc', patchCommand], {
+    timeout: 30000,
+  });
+};
+
 const reconcileDeploymentState = async (deployment: DeploymentRecord | null) => {
   if (!deployment || deployment.appId !== 'openems') {
     return deployment;
@@ -429,15 +467,34 @@ appMarketplaceRouter.get('/apps/:appId/sync/tier0-openems', async (req: Request,
   sendSuccess(res, syncConfig);
 });
 
+appMarketplaceRouter.get('/apps/:appId/sync/tier0-openems/history', async (req: Request, res: Response) => {
+  if (!ensureOpenEmsApp(req.params.appId, res)) {
+    return;
+  }
+
+  const limit = Number(req.query.limit || 240);
+  const history = await openEmsSyncManager.getFeedbackHistory(req.params.appId, limit);
+  sendSuccess(res, history);
+});
+
 appMarketplaceRouter.put('/apps/:appId/sync/tier0-openems', async (req: Request, res: Response) => {
   if (!ensureOpenEmsApp(req.params.appId, res)) {
     return;
   }
 
   try {
-    const syncConfig = await openEmsSyncManager.upsertConfig(req.params.appId, req.body as Tier0ToOpenEmsSyncInput);
+    const syncConfig = await openEmsSyncManager.upsertConfig(
+      req.params.appId,
+      req.body as Tier0ToOpenEmsSyncInput,
+      getTier0AuthContext(req)
+    );
     sendSuccess(res, syncConfig);
   } catch (error: any) {
+    console.error('[app-marketplace] Failed to save OpenEMS sync config', {
+      appId: req.params.appId,
+      message: error?.message || String(error),
+      stack: error?.stack,
+    });
     sendFailure(res, error?.message || 'Failed to save Tier0 to OpenEMS sync config');
   }
 });
@@ -448,9 +505,14 @@ appMarketplaceRouter.post('/apps/:appId/sync/tier0-openems/run', async (req: Req
   }
 
   try {
-    const result = await openEmsSyncManager.runNow(req.params.appId);
+    const result = await openEmsSyncManager.runNow(req.params.appId, getTier0AuthContext(req));
     sendSuccess(res, result);
   } catch (error: any) {
+    console.error('[app-marketplace] Failed to run OpenEMS sync', {
+      appId: req.params.appId,
+      message: error?.message || String(error),
+      stack: error?.stack,
+    });
     sendFailure(res, error?.message || 'Tier0 to OpenEMS sync run failed');
   }
 });
@@ -483,6 +545,9 @@ appMarketplaceRouter.post('/deploy', async (req: Request, res: Response) => {
       payload.params.edgeRestPort || '8084'
     );
     await ensureOpenEmsSimulatorProfile(payload.params);
+    if (normalizedParams.deploymentProfile === 'edge-ui') {
+      await patchOpenEmsUiLanguage(normalizedParams.uiContainerName || 'openems_ui');
+    }
     const finalRecord: DeploymentRecord = {
       ...draftRecord,
       status: 'open',
