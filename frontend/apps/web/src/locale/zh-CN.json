@@ -1094,6 +1094,7 @@
   "marketplace.feedbackHint": "轮询 OpenEMS 真实 Channel，并发布回 Tier0 UNS/MQTT。默认创建符合 ISA95 层级的 State 实时展示 Topic，同时应用市场会保存本地历史用于仪表盘趋势展示。",
   "marketplace.feedbackDashboard": "OpenEMS 回传仪表盘",
   "marketplace.feedbackDashboardHint": "展示 OpenEMS 回传轮询捕获的实时 State 值与本地历史趋势。",
+  "marketplace.feedbackDashboardDisabled": "OpenEMS 回传同步已关闭。请打开 OpenEMS -> Tier0 ISA95 Feedback 并保存同步配置，以恢复实时更新。",
   "marketplace.feedbackDashboardEmpty": "暂无回传历史。保持回传开启并等待一个轮询周期。",
   "marketplace.feedbackDashboardFilteredEmpty": "当前筛选条件下没有可展示的数据卡片。",
   "marketplace.feedbackDashboardSelectPlaceholder": "选择要展示的指标",

@@ -69,13 +69,28 @@ const resolvePublicOrigin = (req: Request) => {
   return `${protocol}://${host}`;
 };
 
-const getLaunchUrl = (req: Request, params: Record<string, string>) => {
-  const origin = resolvePublicOrigin(req);
+const buildLaunchUrlFromOrigin = (origin: string, params: Record<string, string>) => {
   const profile = params.deploymentProfile;
   const port = profile === 'edge-ui' ? params.uiHttpPort || '80' : params.edgeFelixPort || '8080';
   const originUrl = new URL(origin);
   originUrl.port = port;
   return originUrl.toString().replace(/\/$/, '');
+};
+
+const getLaunchUrl = (req: Request, params: Record<string, string>) =>
+  buildLaunchUrlFromOrigin(resolvePublicOrigin(req), params);
+
+const getLaunchUrlFromEnv = (params: Record<string, string>) => {
+  const envProtocol = process.env.ENTRANCE_PROTOCOL?.trim();
+  const envDomain = process.env.ENTRANCE_DOMAIN?.trim();
+  const envPort = process.env.ENTRANCE_PORT?.trim();
+
+  if (!envProtocol || !envDomain) {
+    return undefined;
+  }
+
+  const normalizedPort = envPort && !['80', '443'].includes(envPort) ? `:${envPort}` : '';
+  return buildLaunchUrlFromOrigin(`${envProtocol}://${envDomain}${normalizedPort}`, params);
 };
 
 const shouldUseInternalUiProxyHost = (value?: string) => {
@@ -409,18 +424,28 @@ const reconcileDeploymentState = async (deployment: DeploymentRecord | null) => 
   const needsUi = deployment.params.deploymentProfile === 'edge-ui';
   const edgeRunning = await isContainerRunning(edgeContainerName);
   const uiRunning = needsUi ? await isContainerRunning(uiContainerName) : true;
+  const launchUrl = getLaunchUrlFromEnv(deployment.params) || deployment.launchUrl;
 
   if (!edgeRunning || !uiRunning) {
-    return deployment;
+    const nextDeployment: DeploymentRecord = {
+      ...deployment,
+      status: 'install',
+      launchUrl,
+    };
+    if (deployment.status !== nextDeployment.status || deployment.launchUrl !== nextDeployment.launchUrl) {
+      await writeDeployment(nextDeployment);
+    }
+    return nextDeployment;
   }
 
-  if (deployment.status === 'open' && !deployment.lastError) {
+  if (deployment.status === 'open' && !deployment.lastError && deployment.launchUrl === launchUrl) {
     return deployment;
   }
 
   const nextDeployment: DeploymentRecord = {
     ...deployment,
     status: 'open',
+    launchUrl,
     deployedAt: deployment.deployedAt || new Date().toISOString(),
     lastError: '',
   };

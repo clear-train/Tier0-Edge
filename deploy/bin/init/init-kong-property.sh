@@ -10,7 +10,8 @@ fi
 # 0. Normalise .env line endings (Windows → Unix)
 # ---------------------------------------------------------------------------
 # Use a temp file so the script works on both GNU and BSD/macOS toolchains.
-tr -d '\r' < "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
+ENV_NORMALIZED_TMP="${ENV_FILE}.normalized.$$"
+tr -d '\r' < "$ENV_FILE" > "$ENV_NORMALIZED_TMP" && mv "$ENV_NORMALIZED_TMP" "$ENV_FILE"
 
 # ---------------------------------------------------------------------------
 # 1. Load variables from .env

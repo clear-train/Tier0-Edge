@@ -754,6 +754,11 @@ class OpenEmsSyncManager {
     const mappings = (input.mappings ?? current.mappings).map((mapping, index) => {
       const existing = mapping.id ? mappingById.get(mapping.id) : undefined;
       const id = normalizeString(mapping.id, existing?.id || `mapping-${Date.now()}-${index + 1}`);
+      const tier0SourceValue = normalizeString(mapping.tier0SourceValue, existing?.tier0SourceValue);
+      const tier0SourceType =
+        mapping.tier0SourceType === 'path' || normalizeTopicPath(tier0SourceValue).includes('/')
+          ? 'path'
+          : existing?.tier0SourceType || 'alias';
 
       return {
         id,
@@ -763,8 +768,8 @@ class OpenEmsSyncManager {
           normalizeString(mapping.tier0BaseUrl, existing?.tier0BaseUrl || DEFAULT_TIER0_BASE_URL)
         ),
         tier0MqttUrl: normalizeString(mapping.tier0MqttUrl, existing?.tier0MqttUrl || DEFAULT_TIER0_MQTT_URL),
-        tier0SourceType: mapping.tier0SourceType === 'path' ? 'path' : existing?.tier0SourceType || 'alias',
-        tier0SourceValue: normalizeString(mapping.tier0SourceValue, existing?.tier0SourceValue),
+        tier0SourceType,
+        tier0SourceValue,
         tier0Field: normalizeString(mapping.tier0Field, existing?.tier0Field || 'value'),
         openemsTargetType:
           mapping.openemsTargetType === 'channel' || mapping.openemsTargetType === 'config-property'
@@ -942,6 +947,11 @@ class OpenEmsSyncManager {
       return await this.resolveTier0TopicFromOpenApi(mapping);
     } catch (error: any) {
       errors.push(error?.message || String(error));
+    }
+
+    const aliasAsTopic = normalizeTopicPath(alias);
+    if (aliasAsTopic.includes('/')) {
+      return aliasAsTopic;
     }
 
     throw new Error(`Unable to resolve Tier0 alias [${alias}] to MQTT topic: ${errors.join('; ')}`);

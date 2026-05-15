@@ -674,7 +674,7 @@ const AppMarketplace = () => {
           />
         ) : null}
 
-        {activeApp?.status === 'open' && activeSyncConfig?.feedbackEnabled ? (
+        {activeApp?.status === 'open' && activeSyncConfig ? (
           <div className={styles.feedbackDashboard}>
             <div className={styles.dashboardHeader}>
               <div>
@@ -691,6 +691,18 @@ const AppMarketplace = () => {
                 {formatMessage('marketplace.historySamples', { count: syncHistory.length }, '{count} history samples')}
               </span>
             </div>
+            {!activeSyncConfig.feedbackEnabled ? (
+              <Alert
+                className={styles.alert}
+                type="info"
+                showIcon
+                message={formatMessage(
+                  'marketplace.feedbackDashboardDisabled',
+                  undefined,
+                  'Feedback sync is off. Enable OpenEMS -> Tier0 ISA95 Feedback and save sync to resume live updates.'
+                )}
+              />
+            ) : null}
             <div className={styles.dashboardControls}>
               <Select
                 className={styles.dashboardSelector}

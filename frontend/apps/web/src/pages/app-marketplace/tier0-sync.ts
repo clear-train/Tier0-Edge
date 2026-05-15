@@ -304,7 +304,9 @@ export const buildTier0SyncPayload = (
       enabled: mapping.enabled !== false,
       tier0BaseUrl: mapping.tier0BaseUrl?.trim() || 'http://kong:8000',
       tier0MqttUrl: mapping.tier0MqttUrl?.trim() || 'mqtt://emqx:1883',
-      tier0SourceType: (mapping.tier0SourceType || 'alias') as Tier0SourceType,
+      tier0SourceType: (mapping.tier0SourceType === 'path' || mapping.tier0SourceValue?.trim().includes('/')
+        ? 'path'
+        : 'alias') as Tier0SourceType,
       tier0SourceValue: mapping.tier0SourceValue?.trim() || '',
       tier0Field: mapping.tier0Field?.trim() || 'value',
       openemsTargetType: (mapping.openemsTargetType || 'channel') as OpenEmsTargetType,

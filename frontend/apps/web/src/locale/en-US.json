@@ -1094,6 +1094,7 @@
   "marketplace.feedbackHint": "Poll real OpenEMS channels and publish them back to Tier0 UNS/MQTT. Defaults create ISA95-aligned State topics for live tree display, while the marketplace keeps local history for dashboard trends.",
   "marketplace.feedbackDashboard": "OpenEMS Feedback Dashboard",
   "marketplace.feedbackDashboardHint": "Live State values with local history captured from OpenEMS feedback polling.",
+  "marketplace.feedbackDashboardDisabled": "Feedback sync is off. Enable OpenEMS -> Tier0 ISA95 Feedback and save sync to resume live updates.",
   "marketplace.feedbackDashboardEmpty": "No feedback history yet. Keep feedback enabled for one polling cycle.",
   "marketplace.feedbackDashboardFilteredEmpty": "No dashboard cards match the current filters.",
   "marketplace.feedbackDashboardSelectPlaceholder": "Select metrics to display",

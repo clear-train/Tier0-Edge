@@ -45,6 +45,9 @@
 
 This repository now includes an initial **App Marketplace** entry in the web UI. The first integrated app is **OpenEMS**.
 
+- The reusable integration notes are organized as a generic SDK-style guide under [`docs/app-integration-sdk`](./docs/app-integration-sdk). Use it when connecting another open-source application to Tier0, or when wiring a custom App Market to Tier0 through the provider/adapter contract.
+- The custom marketplace integration contract is documented in [`docs/app-integration-sdk/custom-marketplace.md`](./docs/app-integration-sdk/custom-marketplace.md), with TypeScript extension interfaces in [`docs/app-integration-sdk/templates/app-marketplace-provider.ts`](./docs/app-integration-sdk/templates/app-marketplace-provider.ts).
+- A backend-facing provider/adapter type contract is reserved at `frontend/apps/services-express/src/modules/app-marketplace/contracts.ts` for the future generic multi-app marketplace extraction.
 - A new `App Marketplace` page is available in the frontend navigation and can also be reached from the UNS toolbar.
 - The OpenEMS card is no longer a static demo. It maps deployment fields to an OpenEMS Docker topology (`Edge Only` or `Edge + UI`) and generates a Docker Compose preview in the UI.
 - A local deployment API was added to `frontend/apps/services-express` under `/open-api/app-marketplace`. It stores generated compose files under a runtime directory and executes `docker compose up -d` / `docker compose down` for install and uninstall.
