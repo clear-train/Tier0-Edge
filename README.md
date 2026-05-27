@@ -72,6 +72,31 @@ Local development notes:
 - Tier0 must be reachable from the local bridge, defaulting to `http://localhost:8080`.
 - To verify feedback, install OpenEMS from the marketplace, enable **OpenEMS -> Tier0 ISA95 Feedback**, keep the default MQTT URL `mqtt://emqx:1883`, then click **Run Sync Now**. In Tier0 UNS, open `V1/Tier0Site/EnergyArea/OpenEMSLine/EdgeCell/OpenEMS/State` for live tree values, or `V1/Tier0Site/EnergyArea/OpenEMSLine/EdgeCell/OpenEMS/Metric` for numeric values with `value`, `timeStamp`, and `quality` fields.
 
+### Changing The Local IP
+
+When the host LAN IP changes, run the migration helper instead of editing files manually:
+
+```bash
+bash deploy/bin/update-ip.sh 192.168.0.100
+```
+
+The script updates `deploy/.env`, regenerates `deploy/.env.tmp`, applies the existing Kong/Keycloak IP migration, refreshes local frontend deployment, updates App Marketplace runtime launch URLs, and rewrites Node-RED MQTT broker references that still point to the previous host IP.
+
+Auto-detect is available on supported systems:
+
+```bash
+bash deploy/bin/update-ip.sh --auto
+```
+
+Useful flags:
+
+```bash
+bash deploy/bin/update-ip.sh 192.168.0.100 --no-frontend
+bash deploy/bin/update-ip.sh 192.168.0.100 --no-nodered
+```
+
+By default, Node-RED migration only rewrites MQTT broker nodes that match the previous `ENTRANCE_DOMAIN`. If you intentionally want to rewrite other private-IP MQTT brokers too, add `--rewrite-private-brokers`.
+
 ### 1.Linux
 #### 1.1 Operating Environment
 - **Operating System**: Currently tested on Ubuntu Server 24.04 with Docker. We welcome feedback on other OS distributions.
