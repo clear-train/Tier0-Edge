@@ -1,0 +1,54 @@
+{
+  "appId": "openems",
+  "direction": "bidirectional",
+  "enabled": true,
+  "mappings": [
+    {
+      "id": "tier0-to-openems-consumption",
+      "name": "Tier0 consumption -> OpenEMS simulated consumption",
+      "enabled": true,
+      "tier0BaseUrl": "http://kong:8000",
+      "tier0MqttUrl": "mqtt://emqx:1883",
+      "tier0SourceType": "path",
+      "tier0SourceValue": "State/openemsPower",
+      "tier0Field": "value",
+      "openemsTargetType": "channel",
+      "openemsComponentId": "simulateConsumption",
+      "openemsChannelId": "Data",
+      "openemsUsername": "admin",
+      "openemsPassword": "admin",
+      "valueType": "number",
+      "pollIntervalMs": 5000,
+      "scale": 1,
+      "offset": 0
+    }
+  ],
+  "feedbackEnabled": true,
+  "feedbackMappings": [
+    {
+      "id": "openems-grid-active-power-state",
+      "name": "OpenEMS Grid Active Power State",
+      "enabled": true,
+      "tier0MqttUrl": "mqtt://emqx:1883",
+      "tier0TargetTopic": "V1/Tier0Site/EnergyArea/OpenEMSLine/EdgeCell/OpenEMS/State/gridActivePower",
+      "tier0PayloadField": "value",
+      "openemsSourceType": "channel",
+      "openemsComponentId": "_sum",
+      "openemsChannelId": "GridActivePower",
+      "openemsUsername": "x",
+      "openemsPassword": "user",
+      "valueType": "number",
+      "pollIntervalMs": 5000,
+      "scale": 1,
+      "offset": 0,
+      "isa95Enterprise": "V1",
+      "isa95Site": "Tier0Site",
+      "isa95Area": "EnergyArea",
+      "isa95Line": "OpenEMSLine",
+      "isa95Cell": "EdgeCell",
+      "isa95Asset": "OpenEMS",
+      "isa95Category": "State",
+      "isa95Tag": "gridActivePower"
+    }
+  ]
+}

@@ -124,7 +124,7 @@ export const buildOpenEmsDeploymentSpec = (values: OpenEmsComposeValues) => {
       ],
       environment: {
         WEBSOCKET_HOST: resolveUiProxyHost(values),
-        WEBSOCKET_PORT: resolveUiProxyWebsocketPort(values),
+        WEBSOCKET_PORT: resolveUiProxyWebsocketPort(),
         REST_PORT: resolveUiProxyRestPort(values),
       },
       volumes: [

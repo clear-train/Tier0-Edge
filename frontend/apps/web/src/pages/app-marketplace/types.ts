@@ -3,6 +3,7 @@ export type AppDeployFieldType = 'text' | 'number' | 'select';
 export type Tier0SourceType = 'alias' | 'path';
 export type SyncValueType = 'number' | 'boolean' | 'string';
 export type OpenEmsTargetType = 'channel' | 'config-property';
+export type Isa95TopicCategory = 'State' | 'Action' | 'Metric';
 
 export interface AppDeployField {
   key: string;
@@ -58,16 +59,51 @@ export interface Tier0OpenEmsFormMapping {
   lastError?: string;
 }
 
+export interface OpenEmsTier0FeedbackFormMapping {
+  id?: string;
+  name: string;
+  enabled: boolean;
+  tier0MqttUrl: string;
+  tier0TargetTopic: string;
+  tier0PayloadField: string;
+  openemsSourceType: OpenEmsTargetType;
+  openemsComponentId: string;
+  openemsChannelId: string;
+  openemsUsername: string;
+  openemsPassword: string;
+  valueType: SyncValueType;
+  pollIntervalMs: string;
+  scale: string;
+  offset: string;
+  isa95Enterprise: string;
+  isa95Site: string;
+  isa95Area: string;
+  isa95Line: string;
+  isa95Cell: string;
+  isa95Asset: string;
+  isa95Category: Isa95TopicCategory;
+  isa95Tag: string;
+  lastValue?: string | number | boolean | null;
+  lastSyncedAt?: string;
+  lastError?: string;
+  lastSourceValue?: string | number | boolean | null;
+}
+
 export interface Tier0OpenEmsSyncFormValues {
   syncEnabled: boolean;
   syncMappings: Tier0OpenEmsFormMapping[];
+  feedbackEnabled: boolean;
+  feedbackMappings: OpenEmsTier0FeedbackFormMapping[];
 }
 
 export interface MarketplaceAppSyncSummary {
-  direction: 'tier0-to-openems';
+  direction: 'bidirectional';
   enabled: boolean;
   mappingCount: number;
   enabledMappingCount: number;
+  feedbackEnabled?: boolean;
+  feedbackMappingCount?: number;
+  feedbackEnabledMappingCount?: number;
   lastRunAt?: string;
   lastSuccessAt?: string;
   lastError?: string;

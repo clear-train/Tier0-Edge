@@ -18,16 +18,20 @@ if [ -f "$DEPLOY_DIR/.env.tmp" ]; then
   source "$DEPLOY_DIR/.env.tmp"
 fi
 
-COMPOSE_ARGS=(
-  --env-file "$ENV_FILE"
-  --project-name tier0
-  -f "$DEPLOY_DIR/docker-compose.yml"
-  -f "$DEPLOY_DIR/docker-compose.local-frontend.yml"
-)
-
-if [ -f "$DEPLOY_DIR/.env.tmp" ]; then
-  COMPOSE_ARGS=(--env-file "$ENV_FILE" --env-file "$DEPLOY_DIR/.env.tmp" "${COMPOSE_ARGS[@]:2}")
+ACTIVE_PROFILE_ARGS=""
+ACTIVE_SERVICES_FILE="$VOLUMES_PATH/edge/system/active-services.txt"
+if [ -n "$VOLUMES_PATH" ] && [ -f "$ACTIVE_SERVICES_FILE" ]; then
+  ACTIVE_PROFILE_ARGS="$(sed -n '2p' "$ACTIVE_SERVICES_FILE")"
 fi
+
+ensure_tmp_env() {
+  if [ ! -f "$DEPLOY_DIR/.env.tmp" ]; then
+    echo "Regenerating .env.tmp for local frontend rebuild..."
+    bash "$SCRIPT_DIR/util/set-temp-env.sh" "$DEPLOY_DIR" "$ACTIVE_PROFILE_ARGS"
+  fi
+}
+
+ensure_tmp_env
 
 echo "Building local frontend artifacts..."
 bash "$LOCAL_FRONTEND_ASSET_SCRIPT"
@@ -36,11 +40,20 @@ mkdir -p "$DEPLOY_DIR/../frontend/apps/services-express/.runtime/app-marketplace
 
 echo "Rendering Kong config for local frontend APIs..."
 bash "$INIT_KONG_SCRIPT" "$DEPLOY_DIR"
+ensure_tmp_env
 
 if [ -n "$VOLUMES_PATH" ]; then
   mkdir -p "$VOLUMES_PATH/kong"
   cp "$DEPLOY_DIR/mount/kong/kong_config.yml" "$VOLUMES_PATH/kong/kong_config.yml"
 fi
+
+COMPOSE_ARGS=(
+  --env-file "$ENV_FILE"
+  --env-file "$DEPLOY_DIR/.env.tmp"
+  --project-name tier0
+  -f "$DEPLOY_DIR/docker-compose.yml"
+  -f "$DEPLOY_DIR/docker-compose.local-frontend.yml"
+)
 
 docker compose "${COMPOSE_ARGS[@]}" up -d --build frontend
 

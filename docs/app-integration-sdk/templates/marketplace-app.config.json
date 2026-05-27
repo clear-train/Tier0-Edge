@@ -1,0 +1,49 @@
+{
+  "id": "my-open-source-app",
+  "name": "My Open Source App",
+  "description": "Deploy and connect My Open Source App with Tier0 UNS/MQTT.",
+  "version": "latest",
+  "icon": "apps",
+  "docsUrl": "https://example.org/docs",
+  "adapter": "docker-compose",
+  "deployFields": [
+    {
+      "key": "serviceName",
+      "label": "Service Name",
+      "type": "text",
+      "placeholder": "my-app",
+      "defaultValue": "my-app",
+      "required": true
+    },
+    {
+      "key": "image",
+      "label": "Container Image",
+      "type": "text",
+      "placeholder": "example/my-app:latest",
+      "defaultValue": "example/my-app:latest",
+      "required": true
+    },
+    {
+      "key": "httpPort",
+      "label": "HTTP Port",
+      "type": "number",
+      "placeholder": "18090",
+      "defaultValue": "18090",
+      "required": true
+    },
+    {
+      "key": "dataVolume",
+      "label": "Data Volume",
+      "type": "text",
+      "placeholder": "my-app-data",
+      "defaultValue": "my-app-data",
+      "required": true
+    }
+  ],
+  "sync": {
+    "enabled": false,
+    "inputMappings": [],
+    "feedbackEnabled": false,
+    "feedbackMappings": []
+  }
+}

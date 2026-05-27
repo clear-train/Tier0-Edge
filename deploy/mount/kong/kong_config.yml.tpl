@@ -1890,6 +1890,33 @@ routes:
   protocols:
   - http
   - https
+- name: NodeRedStandalone
+  sources: ~
+  preserve_host: false
+  destinations: ~
+  headers: ~
+  methods: ~
+  https_redirect_status_code: 426
+  service: bba8a174-4679-49df-8bf9-ae9285f1e77e
+  strip_path: true
+  paths:
+  - /nodered/
+  - /nodered
+  created_at: 1778810800
+  updated_at: 1778810800
+  response_buffering: true
+  path_handling: v1
+  regex_priority: 0
+  hosts: ~
+  request_buffering: true
+  snis: ~
+  id: 2b9f7c6e-4574-4aef-b0c5-0b4354e8e31e
+  tags:
+  - direct
+  - node-red
+  protocols:
+  - http
+  - https
 - name: ContainerManagement
   sources: ~
   preserve_host: false
